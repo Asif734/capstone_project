@@ -1,0 +1,204 @@
+{
+  "2023A001": {
+    "name": "Asifuzzaman Asif",
+    "year": 2025,
+    "semester": 5,
+    "department": "Computer Science and AI",
+    "courses": ["AI", "Data Science", "ML"],
+    "marks": {
+      "AI": 85,
+      "Data Science": 90,
+      "ML": 88
+    },
+    "cgpa": {
+      "sem1": 3.5,
+      "sem2": 3.7,
+      "sem3": 3.9,
+      "sem4": 3.8,
+      "sem5": 3.85
+    },
+    "pending_fees": 200,
+    "status": "active"
+  },
+  "2023A002": {
+    "name": "Nadia Rahman",
+    "year": 2025,
+    "semester": 5,
+    "department": "Cybersecurity and Networks",
+    "courses": ["Cybersecurity", "Networks"],
+    "marks": {
+      "Cybersecurity": 92,
+      "Networks": 87
+    },
+    "cgpa": {
+      "sem1": 3.6,
+      "sem2": 3.8,
+      "sem3": 3.9,
+      "sem4": 4.0,
+      "sem5": 3.95
+    },
+    "pending_fees": 0,
+    "status": "active"
+  },
+  "2023A003": {
+    "name": "Rafiul Hasan",
+    "year": 2024,
+    "semester": 4,
+    "department": "Mechanical Engineering",
+    "courses": ["Thermodynamics", "Fluid Mechanics", "Machine Design"],
+    "marks": {
+      "Thermodynamics": 78,
+      "Fluid Mechanics": 81,
+      "Machine Design": 85
+    },
+    "cgpa": {
+      "sem1": 3.3,
+      "sem2": 3.4,
+      "sem3": 3.5,
+      "sem4": 3.55
+    },
+    "pending_fees": 500,
+    "status": "active"
+  },
+  "2023A004": {
+    "name": "Sumaiya Akter",
+    "year": 2023,
+    "semester": 6,
+    "department": "Electrical Engineering",
+    "courses": ["Circuit Theory", "Power Systems", "Electromagnetics"],
+    "marks": {
+      "Circuit Theory": 89,
+      "Power Systems": 84,
+      "Electromagnetics": 90
+    },
+    "cgpa": {
+      "sem1": 3.6,
+      "sem2": 3.7,
+      "sem3": 3.8,
+      "sem4": 3.85,
+      "sem5": 3.9,
+      "sem6": 3.95
+    },
+    "pending_fees": 0,
+    "status": "graduated"
+  },
+  "2023A005": {
+    "name": "Md. Ahsan Kabir",
+    "year": 2025,
+    "semester": 3,
+    "department": "Information Technology",
+    "courses": ["Web Development", "Databases", "Networking"],
+    "marks": {
+      "Web Development": 80,
+      "Databases": 75,
+      "Networking": 82
+    },
+    "cgpa": {
+      "sem1": 3.2,
+      "sem2": 3.4,
+      "sem3": 3.5
+    },
+    "pending_fees": 300,
+    "status": "active"
+  },
+  "2023A006": {
+    "name": "Farzana Chowdhury",
+    "year": 2024,
+    "semester": 4,
+    "department": "Civil Engineering",
+    "courses": ["Structural Analysis", "Surveying", "Concrete Technology"],
+    "marks": {
+      "Structural Analysis": 85,
+      "Surveying": 82,
+      "Concrete Technology": 80
+    },
+    "cgpa": {
+      "sem1": 3.5,
+      "sem2": 3.55,
+      "sem3": 3.6,
+      "sem4": 3.7
+    },
+    "pending_fees": 0,
+    "status": "active"
+  },
+  "2023A007": {
+    "name": "Tanvir Ahmed",
+    "year": 2025,
+    "semester": 5,
+    "department": "Computer Engineering",
+    "courses": ["Operating Systems", "Computer Networks", "Database Systems"],
+    "marks": {
+      "Operating Systems": 88,
+      "Computer Networks": 85,
+      "Database Systems": 91
+    },
+    "cgpa": {
+      "sem1": 3.6,
+      "sem2": 3.7,
+      "sem3": 3.75,
+      "sem4": 3.85,
+      "sem5": 3.9
+    },
+    "pending_fees": 150,
+    "status": "active"
+  },
+  "2023A008": {
+    "name": "Anika Sultana",
+    "year": 2025,
+    "semester": 2,
+    "department": "Business Administration",
+    "courses": ["Accounting", "Marketing", "Economics"],
+    "marks": {
+      "Accounting": 90,
+      "Marketing": 88,
+      "Economics": 91
+    },
+    "cgpa": {
+      "sem1": 3.8,
+      "sem2": 3.85
+    },
+    "pending_fees": 0,
+    "status": "active"
+  },
+  "2023A009": {
+    "name": "Shakib Mahmud",
+    "year": 2023,
+    "semester": 6,
+    "department": "Software Engineering",
+    "courses": ["AI", "Data Structures", "Cloud Computing"],
+    "marks": {
+      "AI": 92,
+      "Data Structures": 89,
+      "Cloud Computing": 87
+    },
+    "cgpa": {
+      "sem1": 3.7,
+      "sem2": 3.8,
+      "sem3": 3.9,
+      "sem4": 3.95,
+      "sem5": 4.0,
+      "sem6": 4.0
+    },
+    "pending_fees": 0,
+    "status": "graduated"
+  },
+  "2023A010": {
+    "name": "Rumana Haque",
+    "year": 2024,
+    "semester": 3,
+    "department": "Psychology",
+    "courses": ["Behavioral Science", "Cognitive Psychology", "Research Methods"],
+    "marks": {
+      "Behavioral Science": 85,
+      "Cognitive Psychology": 88,
+      "Research Methods": 90
+    },
+    "cgpa": {
+      "sem1": 3.5,
+      "sem2": 3.65,
+      "sem3": 3.8
+    },
+    "pending_fees": 100,
+    "status": "active"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "student_001": [
+    {
+      "question": "Hello",
+      "answer": "Hello there! \ud83d\udc4b How can I help you today?"
+    }
+  ],
+  "hdbfhybfd": [
+    {
+      "question": "hi",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "tell me more about bup",
+      "answer": "\"Bup\" can refer to a few different things, so knowing a little more about what you're curious about would help me give you the best information!\n\nAre you perhaps thinking of **Buprenorphine**? It's a medication often used to treat opioid use disorder and chronic pain.\n\nOr is there something else specific you had in mind? Let me know!"
+    }
+  ]
+}

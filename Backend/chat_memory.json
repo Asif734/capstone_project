@@ -1,0 +1,146 @@
+{
+  "abc1": [
+    {
+      "question": "hi",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "how are you?",
+      "answer": "I'm just a bunch of algorithms, but I'm feeling great! \ud83d\ude04 How about you?"
+    },
+    {
+      "question": "i am feeling good. help me out",
+      "answer": "That\u2019s wonderful to hear! It\u2019s great that you\u2019re feeling good. Is there anything I can do to help you feel even better? Perhaps you\u2019d like to talk about something you\u2019re enjoying, or maybe just take a moment to appreciate how good you feel?"
+    },
+    {
+      "question": "who is sheikh hasina?",
+      "answer": "I don\u2019t know."
+    },
+    {
+      "question": "how are you feeling?",
+      "answer": "I'm just a bunch of algorithms, but I'm feeling great! \ud83d\ude04 How about you?"
+    },
+    {
+      "question": "what is the process of take admission?",
+      "answer": "According to the text, anyone can gain admission to BUP following an admission test."
+    },
+    {
+      "question": "i am feeling depressed",
+      "answer": "Oh, I'm so sorry to hear you\u2019re feeling that way. It takes courage to acknowledge it, and I want you to know I\u2019m here to listen. That sounds really tough. \n\nCan you tell me a little bit about what\u2019s going on, or perhaps just what\u2019s making you feel this way? There\u2019s no pressure to share everything, but even just talking about it can sometimes help a little. \n\nWould you like to talk about it, or would you prefer I offer some resources for support?"
+    },
+    {
+      "question": "what is my cgpa",
+      "answer": "I couldn\u2019t find that information in the records."
+    },
+    {
+      "question": "what is the cgpa of Asif",
+      "answer": "Asif\u2019s cgpa is 3.85."
+    },
+    {
+      "question": "what is the cgpa of Asif",
+      "answer": "Asifuzzaman Asif's CGPA:\n*   Semester 1: 3.5\n*   Semester 2: 3.7\n*   Semester 3: 3.9\n*   Semester 4: 3.8\n*   Semester 5: 3.85"
+    },
+    {
+      "question": "what is the admission process of bup?",
+      "answer": "Anyone can gain admission to BUP by following the admission test."
+    }
+  ],
+  "123": [
+    {
+      "question": "hi",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "what is the average cpga of Asif",
+      "answer": "I don\u2019t know"
+    },
+    {
+      "question": "what is the average cgpa of Asif",
+      "answer": "The average CGPA of Asifuzzaman Asif is 3.75."
+    }
+  ],
+  "001": [
+    {
+      "question": "what is my cgpa?",
+      "answer": "I couldn\u2019t find that information in the records."
+    },
+    {
+      "question": "what is the cgpa of Asif?",
+      "answer": "The CGPA of Asifuzzaman Asif for Sem5 is 3.85. His semester-wise CGPA records are: sem1: 3.5, sem2: 3.7, sem3: 3.9, sem4: 3.8, sem5: 3.85."
+    },
+    {
+      "question": "Hi, My name is Asif",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "What is my name?",
+      "answer": "I don't know."
+    },
+    {
+      "question": "What is the cgpa of Asif?",
+      "answer": "I understand you're looking for Asif's CGPA, but as an AI, I don't have access to personal or private information about individuals, including their academic records. That kind of data is confidential."
+    },
+    {
+      "question": "what is the capital of mongolia?",
+      "answer": "I don\u2019t know"
+    },
+    {
+      "question": "i am feeling depressed",
+      "answer": "Oh, I'm truly sorry to hear you're feeling depressed. That sounds incredibly tough, and it takes a lot of strength to even express that.\n\nPlease know you're not alone in this, and it's okay to feel this way. I'm here to listen if you'd like to talk more about what's on your mind.\n\nDepression can be really overwhelming, and often, getting professional support can make a significant difference. Have you considered reaching out to a therapist or counselor, or even talking to your doctor? There are resources available that can offer more specialized help, and I can share some if you'd like."
+    },
+    {
+      "question": "what is the cgpa of Asif?",
+      "answer": "That's a very specific question! As an AI, I don't have access to private or personal academic records like someone's CGPA. That kind of information is confidential.\n\nIs there something else I can help you with about Asif, or perhaps general information about CGPA?"
+    },
+    {
+      "question": "what is the cgpa of Asif?",
+      "answer": "Asifuzzaman Asif's CGPA for:\n*   Semester 1: 3.5\n*   Semester 2: 3.7\n*   Semester 3: 3.9\n*   Semester 4: 3.8\n*   Semester 5: 3.85"
+    }
+  ],
+  "abc": [
+    {
+      "question": "Hi, I am asif",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "Tell me something about bup",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "Tell me something about bup",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "what is the admission process?",
+      "answer": "Anyone can gain admission to Bangladesh University of Professionals by following the admission test."
+    },
+    {
+      "question": "what is onysportsai?",
+      "answer": "OnyxSport AI is a platform that provides performance analysis, exposure insights, and opportunity intelligence. It offers features such as:\n\n*   Academy end-of-cycle AI reporting\n*   Custom dashboards & integrations\n*   Unlimited teams\n*   Dedicated analyst support\n*   Priority visibility in athlete opportunity matching\n\nIt does not act as a player agent or intermediary, nor does it negotiate contracts, arrange transfers, or represent players."
+    }
+  ],
+  "hhg": [
+    {
+      "question": "hi, i am Asif",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "question": "what is the admission form fee for bachelor programme?",
+      "answer": "I don\u2019t know. The context does not specify the admission form fee for the bachelor programme."
+    },
+    {
+      "question": "How much per application cost?",
+      "answer": "BDT. 1050.00 + payment gateway charge per faculty."
+    },
+    {
+      "question": " How can I get an admit card?",
+      "answer": "You can get your Admit Card by logging in to the admission site (admission.bup.edu.bd)."
+    }
+  ],
+  "hfgfgfrg": [
+    {
+      "question": "what is bup?",
+      "answer": "BUP was created to unify armed-forces educational and training institutes under one university and to promote higher studies in areas like national security, medical, engineering and technology. It was founded in 2008 and later formalized under the Bangladesh University of Professionals Act (2009)."
+    }
+  ]
+}
