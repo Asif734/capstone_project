@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { Menu, X, LogIn, UserPlus, Bot } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, Bot, LogOut, User } from 'lucide-react';
 
-const Header = ({ onOpenAuth }) => {
+const Header = ({ onOpenAuth, user, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleAuthClick = (mode) => {
     onOpenAuth(mode);
+    setMobileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    onLogout();
     setMobileMenuOpen(false);
   };
 
@@ -23,20 +28,38 @@ const Header = ({ onOpenAuth }) => {
 
           {/* Desktop Auth Buttons */}
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => handleAuthClick('signin')}
-              className="flex items-center space-x-2 px-4 py-2 text-purple-200 hover:text-white transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In</span>
-            </button>
-            <button
-              onClick={() => handleAuthClick('signup')}
-              className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Sign Up</span>
-            </button>
+            {user ? (
+              <>
+                <div className="flex items-center space-x-2 text-purple-200">
+                  <User className="w-4 h-4" />
+                  <span>Welcome!</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 text-red-200 border border-red-500/30 rounded-lg hover:bg-red-500/30 hover:text-red-100 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleAuthClick('signin')}
+                  className="flex items-center space-x-2 px-4 py-2 text-purple-200 hover:text-white transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </button>
+                <button
+                  onClick={() => handleAuthClick('signup')}
+                  className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Sign Up</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -51,20 +74,38 @@ const Header = ({ onOpenAuth }) => {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 space-y-2 border-t border-purple-500/20">
-            <button
-              onClick={() => handleAuthClick('signin')}
-              className="flex items-center space-x-2 w-full px-4 py-2 text-purple-200 hover:text-white hover:bg-purple-500/10 rounded-lg transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In</span>
-            </button>
-            <button
-              onClick={() => handleAuthClick('signup')}
-              className="flex items-center space-x-2 w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Sign Up</span>
-            </button>
+            {user ? (
+              <>
+                <div className="flex items-center space-x-2 px-4 py-2 text-purple-200">
+                  <User className="w-4 h-4" />
+                  <span>Welcome!</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 w-full px-4 py-2 bg-red-500/20 text-red-200 border border-red-500/30 rounded-lg hover:bg-red-500/30 hover:text-red-100 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleAuthClick('signin')}
+                  className="flex items-center space-x-2 w-full px-4 py-2 text-purple-200 hover:text-white hover:bg-purple-500/10 rounded-lg transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </button>
+                <button
+                  onClick={() => handleAuthClick('signup')}
+                  className="flex items-center space-x-2 w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Sign Up</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

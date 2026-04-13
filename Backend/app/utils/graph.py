@@ -78,14 +78,24 @@ def format_docs(docs):
 #  Prompts
 # -----------------------------
 rag_prompt = PromptTemplate.from_template(
-    """Use the following context to answer the question.
-If it's small talk, respond naturally and friendly.
-Answer in the same language as the question.
-If you don't know, say 'I don’t know' — do not fabricate.
+    """You are an expert assistant for Bangladesh University of Professionals (BUP). 
+Use the provided context to answer the question professionally and comprehensively.
+
+INSTRUCTIONS:
+- Format the response with clear headings and sections using markdown
+- Use bullet points (•) for lists, numbered lists (1. 2. 3.) for sequential items
+- Organize information logically with brief introductory sentences
+- Use bold for key terms and program names
+- Keep sections concise but informative
+- For program/course lists: Group by faculty/category with clear headers
+- Answer in the same language as the question
+- If you don't know, say 'I don't have information about this'
+- Do not fabricate details
 
 Context: {context}
 Question: {question}
-Answer:"""
+
+Professional Response:"""
 )
 
 chat_prompt = PromptTemplate.from_template(
@@ -111,17 +121,17 @@ Answer in the same language as the question."""
 )
 
 # -----------------------------
-# Load Student Data (securely)
+# Load Student Data (securely) - DISABLED
 # -----------------------------
-def load_student_data():
-    try:
-        data_path = Path(__file__).resolve().parents[1] / "db" / "private.json"
-        with data_path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
+# def load_student_data():
+#     try:
+#         data_path = Path(__file__).resolve().parents[1] / "db" / "private.json"
+#         with data_path.open("r", encoding="utf-8") as f:
+#             return json.load(f)
+#     except FileNotFoundError:
+#         return {}
+#     except json.JSONDecodeError:
+#         return {}
 
 # -----------------------------
 # Node Functions
@@ -131,9 +141,13 @@ def router(state: RAGState) -> RAGState:
 
     if detect_greeting(q):
         state["route"] = "greeting"
-    elif any(kw in q for kw in ["cgpa", "fees", "course", "mark", "semester", "registration", "subject", "student"]):
+    # Check if it's a PERSONAL student query (requires auth)
+    # Only match specific personal data requests - my marks, my grades, my cgpa, my fees, my semester, my registration
+    elif any(personal in q for personal in ["my marks", "my grades", "my cgpa", "my fees", "my semester", "my registration", "my current courses", "my enrolled"]):
         state["route"] = "student" if state.get("is_authenticated") else "auth_required"
-    elif any(kw in q for kw in ["who", "what", "when", "where", "why", "how", "explain", "tell me about"]):
+    # Check if it's asking about GENERAL university info or guidance (public, no auth needed)
+    # Include career guidance, program suitability, admissions info
+    elif any(kw in q for kw in ["who", "what", "when", "where", "why", "how", "explain", "tell me about", "program", "curriculum", "suitable", "recommend", "career", "admission", "eligib", "apply"]):
         state["route"] = "rag"
     else:
         state["route"] = "chat"
@@ -167,12 +181,30 @@ def chat_agent(state: RAGState) -> RAGState:
     return state
 
 def student_agent(state: RAGState) -> RAGState:
-    student_data = load_student_data()
-    response = (student_prompt | llm | StrOutputParser()).invoke({
-        "student_data": json.dumps(student_data, indent=2),
-        "question": state["question"],
-    })
-    state["answer"] = response
+    from app.db.database import get_db, get_student_data_by_reg_id
+    
+    db = next(get_db())
+    try:
+        # Get user reg_id from the authenticated user (assuming it's in state)
+        # For now, we'll use a placeholder - in production, get from JWT token
+        reg_id = state.get("user_reg_id", "001")  # This should come from auth context
+        
+        student_data = get_student_data_by_reg_id(reg_id, db)
+        if not student_data:
+            state["answer"] = "I couldn't find your student records. Please contact the administration."
+            return state
+        
+        # Format data for the prompt
+        formatted_data = {reg_id: student_data}
+        
+        response = (student_prompt | llm | StrOutputParser()).invoke({
+            "student_data": json.dumps(formatted_data, indent=2),
+            "question": state["question"],
+        })
+        state["answer"] = response
+    finally:
+        db.close()
+    
     return state
 
 def auth_required_agent(state: RAGState) -> RAGState:

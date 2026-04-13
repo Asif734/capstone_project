@@ -5,7 +5,8 @@ annotated-doc
 annotated-types
 anyio
 attrs
-bcrypt
+passlib==1.7.4
+bcrypt==3.2.2
 cachetools
 certifi
 charset-normalizer
@@ -62,7 +63,6 @@ ollama
 orjson
 ormsgpack
 packaging
-passlib
 pdf2image
 pillow
 pinecone

@@ -14,5 +14,45 @@
   {
     "reg_id": "004",
     "email": "student4@gmail.com"
+  },
+  {
+    "reg_id": "2023A001",
+    "email": "asifuzzaman@university.edu"
+  },
+  {
+    "reg_id": "2023A002",
+    "email": "nadia.rahman@university.edu"
+  },
+  {
+    "reg_id": "2023A003",
+    "email": "rafiul.hasan@university.edu"
+  },
+  {
+    "reg_id": "2023A004",
+    "email": "sumaiya.akter@university.edu"
+  },
+  {
+    "reg_id": "2023A005",
+    "email": "ahsan.kabir@university.edu"
+  },
+  {
+    "reg_id": "2023A006",
+    "email": "farzana.chowdhury@university.edu"
+  },
+  {
+    "reg_id": "2023A007",
+    "email": "tanvir.ahmed@university.edu"
+  },
+  {
+    "reg_id": "2023A008",
+    "email": "anika.sultana@university.edu"
+  },
+  {
+    "reg_id": "2023A009",
+    "email": "shakib.mahmud@university.edu"
+  },
+  {
+    "reg_id": "2023A010",
+    "email": "rumana.haque@university.edu"
   }
 ]

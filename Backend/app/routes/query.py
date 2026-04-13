@@ -3,7 +3,7 @@ from app.schemas.models import QueryRequest, QueryResponse, SourceDocument
 from app.utils.graph import rag_graph
 from app.services.retriever_service import get_retriever
 from app.services.memory_service import MemoryService
-from app.utils.authentication import verify_user_token
+from app.utils.authentication import verify_user_token, get_token_payload
 # from app.services.redis_service import RedisCacheService
 
 
@@ -29,9 +29,13 @@ async def query_documents(
         #     return QueryResponse(answer= cached_answer, sources= [])
 
         is_authenticated= False
+        user_reg_id = None
 
         if user_token:
-            is_authenticated= verify_user_token(user_token)
+            payload = get_token_payload(user_token)
+            if payload:
+                is_authenticated = True
+                user_reg_id = payload.get("reg_id")
 
         state= {
             "question": request.question,
@@ -40,6 +44,7 @@ async def query_documents(
             "answer": None,
             "route": None,
             "is_authenticated": is_authenticated,
+            "user_reg_id": user_reg_id,
             "top_k": request.top_k
         }
 

@@ -95,12 +95,12 @@ const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('authToken');
 
   const config = {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'X-User-Token': token }),
       ...options.headers,
     },
-    ...options,
   };
 
   try {

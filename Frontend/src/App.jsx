@@ -60,7 +60,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
   const [messages, setMessages] = useState([]);
-  const { user, signIn, sendOTP, verifyOTP, error } = useAuth();
+  const { user, signIn, sendOTP, verifyOTP, signOut, error } = useAuth();
 
   const handleOpenAuth = (mode) => {
     console.log('Opening auth with mode:', mode); // Debug log
@@ -96,7 +96,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <Header onOpenAuth={handleOpenAuth} />
+      <Header onOpenAuth={handleOpenAuth} user={user} onLogout={signOut} />
       <ChatArea messages={messages} />
       <MessageInput onSendMessage={handleSendMessage} />
       <AuthModal 
