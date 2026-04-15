@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -39,6 +40,7 @@ class MemoryService:
             memory[user_id] = []
 
         memory[user_id].append({
+            "timestamp": datetime.utcnow().isoformat(),
             "question": question,
             "answer": answer
         })

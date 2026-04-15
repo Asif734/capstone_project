@@ -27,7 +27,6 @@
 
 import os
 from dotenv import load_dotenv
-from pinecone import Pinecone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -49,11 +48,17 @@ class Settings:
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-    #JWT token
+    # JWT token
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-    # Initialize Pinecone client
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@university.edu")
+
+    # Initialize Pinecone client lazily
     @property
     def pinecone_client(self):
+        try:
+            from pinecone import Pinecone
+        except ImportError as exc:
+            raise ImportError("pinecone package is required for Pinecone client") from exc
         return Pinecone(api_key=self.PINECONE_API_KEY)
 
 

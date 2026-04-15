@@ -63,6 +63,31 @@ def send_otp_email(receiver_email: str, otp: str):
     """
 
 
+def send_admin_notification(email: str, subject: str, message: str):
+    """Notify the admin about risk detection events."""
+    if not email:
+        print("[ALERT] No admin email configured. Notification skipped.")
+        return
+
+    # Production: Replace this log-based notification with a real mail service.
+    print(f"[ADMIN ALERT] To: {email}\nSubject: {subject}\n{message}")
+
+    # Example production implementation:
+    # from sendgrid import SendGridAPIClient
+    # from sendgrid.helpers.mail import Mail
+    # mail = Mail(
+    #     from_email='noreply@bup.edu.bd',
+    #     to_emails=email,
+    #     subject=subject,
+    #     html_content=message,
+    # )
+    # try:
+    #     sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+    #     sg.send(mail)
+    # except Exception as e:
+    #     print(f"Admin notification failed: {e}")
+
+
 # ========== JWT TOKEN MANAGEMENT ==========
 SECRET_KEY = settings.JWT_SECRET_KEY or "your-super-secret-key-change-in-production"
 ALGORITHM = "HS256"

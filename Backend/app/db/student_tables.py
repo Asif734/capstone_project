@@ -175,4 +175,21 @@ class LoginHistory(Base):
     user = relationship("User", back_populates="login_history")
 
 
+class MentalHealthAlert(Base):
+    """Store alerts raised by continuous mental-health risk detection."""
+    __tablename__ = "mental_health_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    reg_id = Column(String, nullable=True, index=True)
+    severity = Column(String, nullable=False)
+    score = Column(Integer, nullable=False)
+    matched_phrases = Column(String, nullable=True)
+    question_sample = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    notified = Column(Boolean, default=True)
+
+    user = relationship("User")
+
+
 Base.metadata.create_all(bind=engine)

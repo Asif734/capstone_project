@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.db.sqldb import SessionLocal
-from app.db.student_tables import AuthorizedUser, User, OTP, Session as DBSession, LoginHistory, StudentCourse, CGPARecord, FinancialRecord, AcademicRecord
+from app.db.student_tables import AuthorizedUser, User, OTP, Session as DBSession, LoginHistory, MentalHealthAlert, StudentCourse, CGPARecord, FinancialRecord, AcademicRecord
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -264,6 +264,39 @@ def get_login_history(user_id: int, db: Session, limit: int = 10):
     return db.query(LoginHistory).filter(
         LoginHistory.user_id == user_id
     ).order_by(LoginHistory.login_at.desc()).limit(limit).all()
+
+
+def save_mental_health_alert(
+    user_id: int,
+    reg_id: str | None,
+    severity: str,
+    score: int,
+    matched_phrases: str,
+    question_sample: str,
+    db: Session,
+) -> MentalHealthAlert:
+    """Persist a mental-health risk alert."""
+    alert = MentalHealthAlert(
+        user_id=user_id,
+        reg_id=reg_id,
+        severity=severity,
+        score=score,
+        matched_phrases=matched_phrases,
+        question_sample=question_sample,
+    )
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+def get_recent_mental_health_alerts(user_id: int, db: Session, hours: int = 24):
+    """Return alerts created within the last `hours` hours."""
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    return db.query(MentalHealthAlert).filter(
+        MentalHealthAlert.user_id == user_id,
+        MentalHealthAlert.created_at >= cutoff,
+    ).order_by(MentalHealthAlert.created_at.desc()).all()
 
 
 # ========== STUDENT DATA POPULATION ==========

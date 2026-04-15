@@ -43,7 +43,6 @@
 
 
 
-from pinecone import Pinecone, ServerlessSpec
 import uuid
 from app.core.config import settings
 
@@ -53,6 +52,10 @@ _index = None
 def _get_client():
     global _pc
     if _pc is None:
+        try:
+            from pinecone import Pinecone
+        except ImportError as exc:
+            raise ImportError("pinecone package is required for Pinecone client") from exc
         _pc = Pinecone(api_key=settings.PINECONE_API_KEY)
     return _pc
 
