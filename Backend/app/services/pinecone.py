@@ -68,6 +68,8 @@ def get_index():
     index_name = settings.INDEX_NAME
 
     if index_name not in pc.list_indexes().names():
+        from pinecone import ServerlessSpec
+
         pc.create_index(
             index_name,
             dimension=384,

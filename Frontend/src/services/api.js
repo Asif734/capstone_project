@@ -162,4 +162,79 @@ export const chatAPI = {
   },
 };
 
-export default { authAPI, chatAPI };
+// ==============================
+// ADMIN API ENDPOINTS
+// ==============================
+const adminHeaders = (adminToken) => ({
+  'X-Admin-Token': adminToken,
+});
+
+export const adminAPI = {
+  getSummary: async (adminToken) => {
+    return apiCall('/admin/mental-health-summary', {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  getAlerts: async (adminToken) => {
+    return apiCall('/admin/mental-health-alerts', {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  updateAlert: async (adminToken, alertId, data) => {
+    return apiCall(`/admin/mental-health-alerts/${alertId}`, {
+      method: 'PATCH',
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(data),
+    });
+  },
+
+  getStudents: async (adminToken) => {
+    return apiCall('/admin/authorized-students', {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  addStudent: async (adminToken, data) => {
+    return apiCall('/admin/authorized-students', {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateStudent: async (adminToken, studentId, data) => {
+    return apiCall(`/admin/authorized-students/${studentId}`, {
+      method: 'PATCH',
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteStudent: async (adminToken, studentId) => {
+    return apiCall(`/admin/authorized-students/${studentId}`, {
+      method: 'DELETE',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  getStudentMentalHealth: async (adminToken, regId) => {
+    return apiCall(`/admin/students/${regId}/mental-health`, {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  login: async (email, password) => {
+    return apiCall('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+};
+
+export default { authAPI, chatAPI, adminAPI };

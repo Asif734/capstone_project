@@ -103,6 +103,7 @@ import SignUpStepTwo from './SignUpStepTwo';
 const AuthModal = ({
   isOpen,
   onClose,
+  onSuccess,
   initialMode = 'signin',
   signIn,
   sendOTP,
@@ -127,6 +128,7 @@ const AuthModal = ({
     signIn(data).then((res) => {
       if (res.success) {
         onClose();
+        if (onSuccess) onSuccess();
       }
     });
   };
@@ -144,6 +146,7 @@ const AuthModal = ({
     verifyOTP(data).then((res) => {
       if (res.success) {
         onClose();
+        if (onSuccess) onSuccess();
       }
     });
   };

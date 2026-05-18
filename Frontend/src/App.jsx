@@ -53,6 +53,7 @@ import Header from './components/layout/Header';
 import ChatArea from './components/chat/ChatArea';
 import MessageInput from './components/chat/MessageInput';
 import AuthModal from './components/auth/AuthModal';
+import AdminDashboard from './components/admin/AdminDashboard';
 import { chatAPI } from './services/api';
 import { useAuth } from './hooks/useAuth';
 
@@ -60,6 +61,8 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
   const [messages, setMessages] = useState([]);
+  const [activeView, setActiveView] = useState('chat');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const { user, signIn, sendOTP, verifyOTP, signOut, error } = useAuth();
 
   const handleOpenAuth = (mode) => {
@@ -70,6 +73,21 @@ function App() {
 
   const handleCloseAuth = () => {
     setShowAuthModal(false);
+  };
+
+  const handleAuthSuccess = () => {
+    setActiveView('chat');
+    setShowAuthModal(false);
+  };
+
+  const handleAdminAuth = () => {
+    setIsAdminAuthenticated(true);
+    setActiveView('admin');
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    setActiveView('chat');
   };
 
   const handleSendMessage = (message) => {
@@ -86,9 +104,13 @@ function App() {
         isUser: false 
       }]);
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error('Chat request failed:', error);
+      const message = error?.message
+        ? `Unable to reach backend. ${error.message}`
+        : 'Unable to reach backend. Check that it is running on http://localhost:8000';
       setMessages(prev => [...prev, { 
-        text: 'Unable to reach backend. Check that it is running on http://localhost:8000', 
+        text: message,
         isUser: false 
       }]);
     });
@@ -96,12 +118,31 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <Header onOpenAuth={handleOpenAuth} user={user} onLogout={signOut} />
-      <ChatArea messages={messages} />
-      <MessageInput onSendMessage={handleSendMessage} />
+      <Header
+        onOpenAuth={handleOpenAuth}
+        user={user}
+        onLogout={signOut}
+        onOpenAdmin={() => setActiveView('admin')}
+        onOpenChat={() => setActiveView('chat')}
+        isAdminView={activeView === 'admin'}
+        isAdminAuthenticated={isAdminAuthenticated}
+      />
+      {activeView === 'admin' ? (
+        <AdminDashboard
+          isAdminAuthenticated={isAdminAuthenticated}
+          onAdminAuth={handleAdminAuth}
+          onAdminLogout={handleAdminLogout}
+        />
+      ) : (
+        <>
+          <ChatArea messages={messages} />
+          <MessageInput onSendMessage={handleSendMessage} />
+        </>
+      )}
       <AuthModal 
         isOpen={showAuthModal} 
         onClose={handleCloseAuth}
+        onSuccess={handleAuthSuccess}
         initialMode={authMode}
         signIn={signIn}
         sendOTP={sendOTP}

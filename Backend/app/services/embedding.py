@@ -1,8 +1,16 @@
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+_model = None
+
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    return _model
 
 def get_embedding(chunks):
+    model = get_model()
     embeddings = model.encode(
         chunks,
         convert_to_numpy= True,

@@ -50,7 +50,9 @@ class Settings:
 
     # JWT token
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@university.edu")
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bup.com")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bup2008")
+    ADMIN_DASHBOARD_TOKEN = os.getenv("ADMIN_DASHBOARD_TOKEN", "admin-dashboard-token-change-me")
 
     # Initialize Pinecone client lazily
     @property

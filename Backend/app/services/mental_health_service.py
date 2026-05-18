@@ -168,31 +168,31 @@ class MentalHealthService:
     def _preprocess_text(self, text: str) -> str:
         """Preprocess text similar to training."""
         import re
-        from nltk.corpus import stopwords
-        from nltk.stem import WordNetLemmatizer
-        import nltk
 
-        # Download if needed
-        try:
-            nltk.data.find('corpora/stopwords')
-        except LookupError:
-            nltk.download('stopwords')
-        try:
-            nltk.data.find('corpora/wordnet')
-        except LookupError:
-            nltk.download('wordnet')
-
-        # Lowercase
         text = text.lower()
-        # Remove special characters and numbers
         text = re.sub(r'[^a-zA-Z\s]', '', text)
-        # Tokenize and remove stopwords
-        stop_words = set(stopwords.words('english'))
         words = text.split()
-        words = [word for word in words if word not in stop_words]
-        # Lemmatize
-        lemmatizer = WordNetLemmatizer()
-        words = [lemmatizer.lemmatize(word) for word in words]
+
+        try:
+            from nltk.corpus import stopwords
+            from nltk.stem import WordNetLemmatizer
+
+            stop_words = set(stopwords.words('english'))
+            lemmatizer = WordNetLemmatizer()
+            words = [
+                lemmatizer.lemmatize(word)
+                for word in words
+                if word not in stop_words
+            ]
+        except Exception:
+            fallback_stop_words = {
+                "a", "an", "and", "are", "as", "at", "be", "but", "by",
+                "for", "from", "has", "have", "i", "in", "is", "it",
+                "of", "on", "or", "that", "the", "to", "was", "were",
+                "with", "you", "your",
+            }
+            words = [word for word in words if word not in fallback_stop_words]
+
         return ' '.join(words)
 
     def _analyze_with_rules(self, interactions: List[Dict]) -> Dict[str, object]:
@@ -224,10 +224,20 @@ class MentalHealthService:
 
     def determine_severity(self, analysis: Dict[str, object]) -> str:
         if self.use_ml:
-            return analysis.get("risk_level", "low")
+            predicted_class = analysis.get("predicted_class", "")
+            confidence = float(analysis.get("confidence", 0.0) or 0.0)
+            risk_level = analysis.get("risk_level", "low")
+
+            if predicted_class == "Suicidal" and confidence >= 0.7:
+                return "critical"
+            if risk_level == "high" and confidence >= 0.9:
+                return "critical"
+            if risk_level in ["high", "moderate", "low"]:
+                return risk_level
+            return "low"
         else:
             if analysis["high_hits"]:
-                return "high"
+                return "critical"
             if analysis["score"] >= 18:
                 return "high"
             if analysis["score"] >= 10:
@@ -281,6 +291,8 @@ class MentalHealthService:
             matched_phrases=matched_phrases,
             question_sample=latest_message,
             db=db,
+            predicted_class=analysis.get("predicted_class") if self.use_ml else None,
+            confidence=float(analysis.get("confidence", 0.0) or 0.0) if self.use_ml else None,
         )
 
         self.notify_admin(alert)
@@ -290,8 +302,11 @@ class MentalHealthService:
             "reg_id": alert.reg_id,
             "severity": alert.severity,
             "score": alert.score,
+            "predicted_class": alert.predicted_class,
+            "confidence": alert.confidence,
             "matched_phrases": alert.matched_phrases,
             "question_sample": alert.question_sample,
+            "status": alert.status,
         }
 
     def notify_admin(self, alert) -> None:
@@ -300,6 +315,8 @@ class MentalHealthService:
             f"A mental-health risk signal was detected for user {alert.reg_id or alert.user_id}.\n"
             f"Severity: {alert.severity}\n"
             f"Score: {alert.score}\n"
+            f"Predicted class: {alert.predicted_class or 'N/A'}\n"
+            f"Confidence: {alert.confidence if alert.confidence is not None else 'N/A'}\n"
             f"Detected phrases: {alert.matched_phrases}\n"
             f"Latest user message: {alert.question_sample}\n"
             f"Alert created at: {alert.created_at.isoformat()}\n"

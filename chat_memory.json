@@ -95,6 +95,11 @@
     {
       "question": "find my academic records",
       "answer": "Hello there! I understand you're looking for your academic records.\n\nAs an AI, I don't have direct access to individual student data for privacy reasons. However, you can easily find your academic records by logging into the **BUP Student Information Portal** using your student ID and password.\n\nIf you're looking for official transcripts or have specific issues, your **Department Office** or the **Registrar's Office** would be the best contacts.\n\nIs there anything else I can help you with regarding the portal or contact details?"
+    },
+    {
+      "timestamp": "2026-05-18T05:16:27.598951",
+      "question": "Hello",
+      "answer": "Hello there! \ud83d\udc4b How can I help you today?"
     }
   ],
   "hdbfhybfd": [
@@ -127,6 +132,18 @@
     {
       "question": "I have studied humanities at 12th grade. What are the most suitable subjects I should consider at BUP?",
       "answer": "As an expert assistant for Bangladesh University of Professionals (BUP), I can guide you on suitable undergraduate programs given your humanities background from 12th grade. BUP offers a diverse range of programs across various faculties that align well with humanities studies.\n\nHere are the most suitable subjects and programs you should consider at BUP:\n\n### 1. Faculty of Arts & Social Sciences (FASS)\n\nThe **Faculty of Arts & Social Sciences (FASS)** is an excellent starting point for students with a humanities background, offering a wide array of programs in social sciences and arts disciplines.\n\n*   **Undergraduate Programs:**\n    *   **Bachelor of Social Science (BSS) in Economics:** Focuses on economic theories, policies, and their societal impact.\n    *   **Bachelor of Social Science (BSS) in Public Administration:** Covers governance, public policy, and administrative processes.\n    *   **Bachelor of Social Science (BSS) in Sociology:** Explores societal structures, human behavior, and social issues.\n    *   **Bachelor of Social Science (BSS) in Disaster & Human Security Management:** Addresses disaster preparedness, response, and human security aspects.\n    *   **Bachelor of Arts (BA) in English:** Offers specializations in English Literature & Cultural Studies or English Language Teaching & Applied Linguistics.\n\n### 2. Faculty of Security & Strategic Studies (FSSS)\n\nThe **Faculty of Security & Strategic Studies (FSSS)** also provides programs that are highly relevant to humanities students, particularly those interested in law, international affairs, and media.\n\n*   **Undergraduate Programs:**\n    *   **LLB (Hons.) in Law:** A comprehensive program for those aspiring to a career in law, requiring strong analytical and communication skills often honed in humanities.\n    *   **BSS (Hons.) in International Relations (IR):** Focuses on global politics, diplomacy, and international affairs.\n    *   **BSS (Hons.) in Mass Communication & Journalism:** Ideal for students interested in media, communication, and public relations.\n    *   **BSS (Hons.) in Peace, Conflict and Human Rights:** Explores the dynamics of conflict, peacebuilding, and human rights.\n\n### 3. Centre for Modern Languages (CML)\n\nWhile not a degree-granting faculty for undergraduate programs in the same way, the **Centre for Modern Languages (CML)** offers certificate courses in various languages, which can complement any of the above degrees and enhance your career prospects.\n\n*   **Languages Offered:**\n    *   Arabic\n    *   Chinese\n    *   English\n    *   French\n    *   German\n    *   Japanese\n    *   Russian\n    *   Turkish\n    *   Burmese\n\n### Important Considerations for Admission\n\n*   **Admission Test:** Admission to BUP is competitive and requires passing an admission test, which typically includes sections relevant to your chosen faculty (e.g., English, General Knowledge, Analytical Ability).\n*   **Eligibility Criteria:** Ensure you meet the specific academic eligibility criteria for each program, which are usually detailed on the BUP admissions website.\n\nBy considering these faculties and their respective undergraduate programs, you will find excellent opportunities at BUP that build upon your humanities background and prepare you for a successful professional career."
+    }
+  ],
+  "1": [
+    {
+      "timestamp": "2026-05-18T05:00:00.407683",
+      "question": "hi",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
+    },
+    {
+      "timestamp": "2026-05-18T05:34:33.278072",
+      "question": "hi",
+      "answer": "Hi! \ud83d\ude0a What would you like to know?"
     }
   ]
 }

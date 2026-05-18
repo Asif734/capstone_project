@@ -1,9 +1,9 @@
 
 from fastapi import FastAPI 
-from app.routes import upload_file, query, authentication
+from app.routes import upload_file, query, authentication, admin
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import sqldb
-from app.db.database import initialize_authorized_users, get_db
+from app.db.database import ensure_schema_migrations, initialize_authorized_users, get_db
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 
@@ -12,6 +12,7 @@ async def lifespan(app: FastAPI):
     # Startup
     db: Session = next(get_db())
     try:
+        ensure_schema_migrations(db)
         initialize_authorized_users(db)
         # Populate student data from private.json
         from app.db.database import populate_student_data_from_json
@@ -47,5 +48,6 @@ async def get_root():
     return "Server started Successfully"
 
 app.include_router(authentication.router, tags=["Authentication"])
+app.include_router(admin.router, tags=["Admin"])
 app.include_router(upload_file.router, tags=["Upload file"])
 app.include_router(query.router, tags=["Query"])

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Menu, X, LogIn, UserPlus, Bot, LogOut, User } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, Bot, LogOut, User, Shield, MessageCircle } from 'lucide-react';
 
-const Header = ({ onOpenAuth, user, onLogout }) => {
+const Header = ({ onOpenAuth, user, onLogout, onOpenAdmin, onOpenChat, isAdminView = false, isAdminAuthenticated = false }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleAuthClick = (mode) => {
@@ -28,6 +28,20 @@ const Header = ({ onOpenAuth, user, onLogout }) => {
 
           {/* Desktop Auth Buttons */}
           <div className="flex items-center space-x-4">
+            {!isAdminAuthenticated ? (
+            <button
+              onClick={isAdminView ? onOpenChat : onOpenAdmin}
+              className="flex items-center space-x-2 px-4 py-2 text-purple-200 hover:text-white transition-colors"
+            >
+              {isAdminView ? <MessageCircle className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+              <span>{isAdminView ? 'Chat' : 'Admin'}</span>
+            </button>
+          ) : (
+            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg text-purple-200 border border-purple-500/30 bg-slate-900/40">
+              <Shield className="w-4 h-4" />
+              <span>Admin Mode</span>
+            </div>
+          )}
             {user ? (
               <>
                 <div className="flex items-center space-x-2 text-purple-200">
@@ -74,6 +88,16 @@ const Header = ({ onOpenAuth, user, onLogout }) => {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 space-y-2 border-t border-purple-500/20">
+            <button
+              onClick={() => {
+                isAdminView ? onOpenChat() : onOpenAdmin();
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center space-x-2 w-full px-4 py-2 text-purple-200 hover:text-white hover:bg-purple-500/10 rounded-lg transition-colors"
+            >
+              {isAdminView ? <MessageCircle className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+              <span>{isAdminView ? 'Chat' : 'Admin'}</span>
+            </button>
             {user ? (
               <>
                 <div className="flex items-center space-x-2 px-4 py-2 text-purple-200">

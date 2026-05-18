@@ -1,3 +1,4 @@
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from app.db.sqldb import SessionLocal
 from app.db.student_tables import AuthorizedUser, User, OTP, Session as DBSession, LoginHistory, MentalHealthAlert, StudentCourse, CGPARecord, FinancialRecord, AcademicRecord
@@ -18,6 +19,37 @@ def get_db():
         yield db
     finally: 
         db.close()
+
+
+def ensure_schema_migrations(db: Session):
+    """Apply lightweight SQLite-safe schema updates for existing local DBs."""
+    inspector = inspect(db.bind)
+    table_names = inspector.get_table_names()
+    if "mental_health_alerts" not in table_names:
+        return
+
+    existing_columns = {
+        column["name"]
+        for column in inspector.get_columns("mental_health_alerts")
+    }
+    migrations = {
+        "predicted_class": "ALTER TABLE mental_health_alerts ADD COLUMN predicted_class VARCHAR",
+        "confidence": "ALTER TABLE mental_health_alerts ADD COLUMN confidence FLOAT",
+        "status": "ALTER TABLE mental_health_alerts ADD COLUMN status VARCHAR DEFAULT 'new'",
+        "admin_notes": "ALTER TABLE mental_health_alerts ADD COLUMN admin_notes TEXT",
+        "reviewed_at": "ALTER TABLE mental_health_alerts ADD COLUMN reviewed_at DATETIME",
+        "closed_at": "ALTER TABLE mental_health_alerts ADD COLUMN closed_at DATETIME",
+    }
+
+    changed = False
+    for column_name, statement in migrations.items():
+        if column_name not in existing_columns:
+            db.execute(text(statement))
+            changed = True
+
+    if changed:
+        db.execute(text("UPDATE mental_health_alerts SET status = 'new' WHERE status IS NULL"))
+        db.commit()
 
 
 # ========== STUDENT VERIFICATION ==========
@@ -274,6 +306,8 @@ def save_mental_health_alert(
     matched_phrases: str,
     question_sample: str,
     db: Session,
+    predicted_class: str | None = None,
+    confidence: float | None = None,
 ) -> MentalHealthAlert:
     """Persist a mental-health risk alert."""
     alert = MentalHealthAlert(
@@ -281,8 +315,11 @@ def save_mental_health_alert(
         reg_id=reg_id,
         severity=severity,
         score=score,
+        predicted_class=predicted_class,
+        confidence=confidence,
         matched_phrases=matched_phrases,
         question_sample=question_sample,
+        status="new",
     )
     db.add(alert)
     db.commit()
