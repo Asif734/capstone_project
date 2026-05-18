@@ -20,3 +20,4 @@ htmlcov/
 dist/
 
 notebook_env/
+Backend/app/db/Combined Data.csv
