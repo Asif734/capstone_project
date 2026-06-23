@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.routes import upload_file, query, authentication, admin
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import sqldb
+from app.core.config import settings
 from app.db.database import ensure_schema_migrations, initialize_authorized_users, get_db
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
@@ -10,6 +11,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    settings.validate_startup()
     db: Session = next(get_db())
     try:
         ensure_schema_migrations(db)

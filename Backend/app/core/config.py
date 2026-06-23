@@ -1,69 +1,67 @@
-# import os
-# from pinecone import Pinecone
-
-# class Settings:
-#     PINECONE_API_KEY = os.getenv(
-#         "PINECONE_API_KEY",
-#         "pcsk_5MgxE2_SvtRBE7ARYHwcVd5S5ucZEucguxrL86BCdEovgadhSFoHqDE3CmKVP5nVNRW4cm"
-#     )
-#     INDEX_NAME = "multilingual-text"
-#     LLM_MODEL = "gemma3:4b"
-#     EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-
-#     # Gemini model (optional)
-#     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBw_vv1SHpPSjd_14RDbNyLolPNl5kkrIs")
-#     GEMINI_MODEL = "gemini-2.5-flash"
-
-# # ✅ Environment setup
-# os.environ["PINECONE_API_KEY"] = Settings.PINECONE_API_KEY
-# os.environ["GOOGLE_API_KEY"] = Settings.GEMINI_API_KEY
-
-# settings = Settings()
-# pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-
-
-
-
-
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(ENV_FILE)
 load_dotenv()
 
 class Settings:
-    # Pinecone setup
-    INDEX_NAME = "multilingual-text"
-    EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    APP_ENV = os.getenv("APP_ENV", "development").lower()
 
-    # 🔥 Choose your LLM provider
-    # Options: "ollama" or "gemini"
-    #LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
-
-    # Default LLM Models
-    #OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-
-    # API Keys (read from .env)
+    INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "multilingual-text")
+    EMBEDDING_MODEL = os.getenv(
+        "EMBEDDING_MODEL",
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    )
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-    # JWT token
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
+    LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+    REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+    REDIS_CACHE_ENABLED = os.getenv("REDIS_CACHE_ENABLED", "true").lower() == "true"
+    REDIS_CACHE_TTL_SECONDS = int(os.getenv("REDIS_CACHE_TTL_SECONDS", "86400"))
+    REDIS_CACHE_SIMILARITY_THRESHOLD = float(
+        os.getenv("REDIS_CACHE_SIMILARITY_THRESHOLD", "0.80")
+    )
+    REDIS_CACHE_MAX_CANDIDATES = int(os.getenv("REDIS_CACHE_MAX_CANDIDATES", "500"))
+
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bup.com")
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bup2008")
-    ADMIN_DASHBOARD_TOKEN = os.getenv("ADMIN_DASHBOARD_TOKEN", "admin-dashboard-token-change-me")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+    ADMIN_DASHBOARD_TOKEN = os.getenv("ADMIN_DASHBOARD_TOKEN")
 
-    # Initialize Pinecone client lazily
+    REQUIRE_EMAIL_DELIVERY = os.getenv("REQUIRE_EMAIL_DELIVERY", "false").lower() == "true"
+
     @property
     def pinecone_client(self):
+        if not self.PINECONE_API_KEY:
+            raise ValueError("PINECONE_API_KEY is not configured")
         try:
             from pinecone import Pinecone
         except ImportError as exc:
             raise ImportError("pinecone package is required for Pinecone client") from exc
         return Pinecone(api_key=self.PINECONE_API_KEY)
 
+    def validate_startup(self) -> None:
+        missing = []
+        if not self.JWT_SECRET_KEY:
+            missing.append("JWT_SECRET_KEY")
+        if not self.ADMIN_PASSWORD:
+            missing.append("ADMIN_PASSWORD")
+        if not self.ADMIN_DASHBOARD_TOKEN:
+            missing.append("ADMIN_DASHBOARD_TOKEN")
+        if self.LLM_PROVIDER != "ollama":
+            missing.append("LLM_PROVIDER=ollama")
 
-# Create a global instance
+        if missing and self.APP_ENV == "production":
+            raise RuntimeError(
+                "Missing required production configuration: " + ", ".join(missing)
+            )
+
 settings = Settings()
-

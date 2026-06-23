@@ -41,6 +41,9 @@ def generate_otp(length: int = 6) -> str:
 
 def send_otp_email(receiver_email: str, otp: str):
     """Send OTP via email (currently simulated)"""
+    if settings.REQUIRE_EMAIL_DELIVERY:
+        raise RuntimeError("Email delivery is required but no email provider is configured")
+
     print(f"[DEBUG] OTP sent to {receiver_email}: {otp}")
     
     # Production: Connect to email service (SendGrid, AWS SES, etc.)
@@ -89,7 +92,7 @@ def send_admin_notification(email: str, subject: str, message: str):
 
 
 # ========== JWT TOKEN MANAGEMENT ==========
-SECRET_KEY = settings.JWT_SECRET_KEY or "your-super-secret-key-change-in-production"
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -219,4 +222,3 @@ def generate_secure_token() -> str:
 
 
 import secrets
-

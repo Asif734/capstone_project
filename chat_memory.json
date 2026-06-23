@@ -145,5 +145,22 @@
       "question": "hi",
       "answer": "Hi! \ud83d\ude0a What would you like to know?"
     }
+  ],
+  "112": [
+    {
+      "timestamp": "2026-06-03T14:43:10.023320",
+      "question": "hi",
+      "answer": "Hi. What would you like to know?"
+    },
+    {
+      "timestamp": "2026-06-03T14:48:37.988488",
+      "question": "what is the admission process for the bup?",
+      "answer": "# Admission Process at Bangladesh University of Professionals (BUP)\n\n## Overview\nThe admission process for Bangladesh University of Professionals (BUP) is strictly online and follows a structured timeline based on the current academic session's admission circulars. Applicants must adhere to published deadlines and requirements to ensure eligibility for undergraduate and graduate programs.\n\n## Key Steps in the Admission Process\n1. **Review Official Advertisements**: Check the latest admission circulars and session-specific requirements on BUP's official website ([bup.edu.bd](https://bup.edu.bd)) and the admission portal ([admission.bup.edu.bd](https://admission.bup.edu.bd)).\n2. **Submit Online Application**: Complete and submit your application through the BUP admission portal by the **announced deadlines** for the current session.\n3. **Prepare for Written Admission Test**: For undergraduate programs, BUP conducts written admission tests. The test format, mark distribution, and negative marking rules are published in each admission circular.\n\n## Eligibility and Requirements\n- **GPA Thresholds**: Typical cutoffs vary by faculty and academic session (e.g., total SSC+HSC GPA requirements differ across faculties and years).\n- **Test Participation**: All undergraduate applicants must appear for the written admission test as specified in the current session's circular.\n\n## Important Notes\n- **Current Session Requirements**: Always verify the **current session\u2019s admission advertisement** for accurate thresholds, test dates, and fee structures. *Do not rely on outdated information*.\n- **Official Sources Only**: The most reliable details are published on BUP's official site and admission portal. Third-party sites (e.g., EduRank, Admissionwar) provide indicative data but may not reflect official requirements.\n- **Postgraduate Programs**: Graduate programs (MPhil/PhD) are managed through the Centre for Higher Studies and Research (CHSR) and follow separate admission guidelines.\n\n## Additional Context\nBUP offers undergraduate and graduate programs across **6 faculties** (including Faculty of Arts & Social Sciences, Faculty of Business, and others). The admission process is standardized but requires strict adherence to the current session's circulars to ensure compliance. \n\n*For real-time updates, always refer to the latest admission circulars published on [bup.edu.bd](https://bup.edu.bd).*"
+    },
+    {
+      "timestamp": "2026-06-03T14:52:51.426094",
+      "question": "Ami admit hote chai",
+      "answer": "Sure! To apply for admission at BUP, you should:  \n1. Check the **current academic programs** and eligibility on the [official BUP website](https://www.bup.edu.bd).  \n2. Review the admission deadlines and required documents (e.g., transcripts, certificates).  \n3. Contact the **BUP Admissions Office** directly for personalized guidance:  \n   \ud83d\udcde **+88 02 5555 5555** | \u2709\ufe0f **admissions@bup.edu.bd**  \n\n*Note: I don\u2019t access student records\u2014always use official channels for admissions.*"
+    }
   ]
 }

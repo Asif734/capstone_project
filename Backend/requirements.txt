@@ -51,6 +51,7 @@ langgraph-checkpoint
 langgraph-prebuilt
 langgraph-sdk
 langsmith
+lightgbm
 lxml
 MarkupSafe
 marshmallow
@@ -85,6 +86,7 @@ python-dotenv
 python-multipart
 PyYAML
 regex
+redis
 requests
 requests-toolbelt
 rsa

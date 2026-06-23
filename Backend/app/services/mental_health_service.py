@@ -24,6 +24,7 @@ class MentalHealthService:
         try:
             self.model = joblib.load(os.path.join(model_dir, 'best_mental_health_model.pkl'))
             self.vectorizer = joblib.load(os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
+            self._repair_vectorizer_compatibility()
             self.label_encoder = joblib.load(os.path.join(model_dir, 'label_encoder.pkl'))
             self.use_ml = True
             print("ML model loaded successfully for mental health detection.")
@@ -31,6 +32,16 @@ class MentalHealthService:
             print("ML model files not found, falling back to rule-based detection.")
             self.use_ml = False
             self._init_rule_based_patterns()
+
+    def _repair_vectorizer_compatibility(self) -> None:
+        """Restore TF-IDF internals when loading newer sklearn pickles."""
+        tfidf = getattr(self.vectorizer, "_tfidf", None)
+        if not tfidf or hasattr(tfidf, "_idf_diag"):
+            return
+
+        idf = getattr(tfidf, "__dict__", {}).get("idf_")
+        if idf is not None:
+            self.vectorizer.idf_ = idf
 
     def _init_rule_based_patterns(self):
         """Initialize rule-based patterns for fallback."""

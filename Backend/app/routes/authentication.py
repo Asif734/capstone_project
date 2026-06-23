@@ -140,7 +140,7 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
             )
 
         # Verify OTP
-        if valid_otp != data.otp and data.otp != "123456":
+        if valid_otp != data.otp:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid OTP. {3 - (attempts - 1)} attempts remaining."
