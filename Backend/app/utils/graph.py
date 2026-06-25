@@ -1,4 +1,5 @@
 import json
+import re
 from typing import List, Any, Literal, Annotated, TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import PromptTemplate
@@ -15,10 +16,11 @@ class RAGState(TypedDict):
     context: str | None
     docs: List[Any] | None
     answer: str | None
-    route: Literal["greeting", "rag", "chat", "student", "auth_required"] | None
+    route: Literal["greeting", "rag", "chat", "student", "auth_required", "clarify", "mental_support"] | None
     is_authenticated: bool
     user_reg_id: str | None
     top_k: int | None
+    conversation_history: List[dict] | None
 
 GREETING_RESPONSES = {
     "hello": "Hello. How can I help you today?",
@@ -36,24 +38,216 @@ GREETING_RESPONSES = {
 # -----------------------------
 def detect_greeting(q: str) -> bool:
     q = q.lower().strip()
-    return any(key in q for key in GREETING_RESPONSES.keys())
+    return any(re.search(rf"\b{re.escape(key)}\b", q) for key in GREETING_RESPONSES.keys())
 
 def get_greeting_response(q: str) -> str:
     q = q.lower()
     for key, resp in GREETING_RESPONSES.items():
-        if key in q:
+        if re.search(rf"\b{re.escape(key)}\b", q):
             return resp
     return "Hey there! 😊 How can I help you today?"
 
 
-def route_question(question: str, is_authenticated: bool = False) -> str:
+FIRST_PERSON_PATTERN = re.compile(
+    r"\b(my|me|mine|i|ami|amar|amake|apnar)\b|আমার|আমি|আমাকে|আপনার",
+    re.IGNORECASE,
+)
+
+STUDENT_RECORD_PATTERN = re.compile(
+    r"\b("
+    r"name|marks?|grades?|cgpa|cggpa|gpa|fees?|dues?|payment|semester|registration|"
+    r"student\s*id|result|transcript|profile|record|attendance|department|email|courses?"
+    r")\b|"
+    r"নাম|মার্ক|গ্রেড|সিজিপিএ|জিপিএ|ফি|সেমিস্টার|রেজিস্ট্রেশন|আইডি|রেজাল্ট|"
+    r"ট্রান্সক্রিপ্ট|প্রোফাইল|রেকর্ড|উপস্থিতি|বিভাগ|ডিপার্টমেন্ট|ইমেইল",
+    re.IGNORECASE,
+)
+
+PRIVATE_STUDENT_TERMS = [
+    "cgpa",
+    "cggpa",
+    "gpa",
+    "marks",
+    "mark",
+    "grade",
+    "grades",
+    "fees",
+    "fee",
+    "dues",
+    "payment",
+    "semester",
+    "course",
+    "courses",
+    "attendance",
+    "result",
+    "transcript",
+    "registration",
+    "profile",
+    "record",
+    "email",
+]
+
+IDENTITY_INTENT_PATTERN = re.compile(
+    r"\b("
+    r"do you know me|do you know who i am|do you know my name|do you know my details|"
+    r"who am i|what is my name|what's my name|tell me my name|show my name|"
+    r"my name|my profile|my details|about me|know me|know who i am"
+    r")\b",
+    re.IGNORECASE,
+)
+
+ADMISSION_TERMS = [
+    "admission",
+    "admissions",
+    "apply",
+    "application",
+    "eligibility",
+    "eligible",
+    "requirement",
+    "requirements",
+]
+
+PROGRAM_LEVEL_TERMS = [
+    "undergraduate",
+    "bachelor",
+    "bba",
+    "bss",
+    "honours",
+    "honors",
+    "masters",
+    "master",
+    "msc",
+    "mphil",
+    "phd",
+    "doctoral",
+    "doctorate",
+]
+
+MENTAL_HEALTH_TERMS = [
+    "stressed",
+    "stress",
+    "feeling low",
+    "feel low",
+    "depressed",
+    "anxious",
+    "anxiety",
+    "can't continue",
+    "cannot continue",
+    "should quit",
+    "want to quit",
+    "i want to die",
+    "kill myself",
+    "end my life",
+    "self harm",
+    "suicidal",
+    "sekhane jete chai na",
+]
+
+
+def has_identity_intent(q: str) -> bool:
+    return bool(IDENTITY_INTENT_PATTERN.search(q))
+
+
+def has_private_data_intent(q: str) -> bool:
+    asks_about_self = bool(FIRST_PERSON_PATTERN.search(q))
+    asks_about_record = bool(STUDENT_RECORD_PATTERN.search(q))
+    mentions_student_id = bool(re.search(r"\b\d{6,}\b", q))
+    has_private_term = any(term in q.lower() for term in PRIVATE_STUDENT_TERMS)
+    return asks_about_record and (asks_about_self or mentions_student_id or has_private_term)
+
+
+def is_bangla(text: str) -> bool:
+    return any("\u0980" <= char <= "\u09ff" for char in text)
+
+
+def is_banglish(text: str) -> bool:
+    q = text.lower()
+    return any(term in q for term in ["ami", "amar", "koto", "kon", "konta", "naam", "nam"])
+
+
+def has_mental_health_intent(q: str) -> bool:
+    return any(term in q for term in MENTAL_HEALTH_TERMS)
+
+
+def is_broad_admission_question(q: str, conversation_history: List[dict] | None = None) -> bool:
+    has_admission_intent = any(term in q for term in ADMISSION_TERMS)
+    has_specific_level = any(term in q for term in PROGRAM_LEVEL_TERMS)
+    words = set(q.replace("/", " ").replace("-", " ").replace("?", " ").split())
+    has_specific_program = bool(words.intersection({"mice", "mict", "miss", "fbs", "fss", "fsst"}))
+
+    if not has_admission_intent:
+        return False
+    if has_specific_level or has_specific_program:
+        return False
+
+    recent_assistant_text = " ".join(
+        item.get("answer", "").lower()
+        for item in (conversation_history or [])[-3:]
+    )
+    if "which level" in recent_assistant_text or "undergraduate" in recent_assistant_text:
+        return False
+
+    return True
+
+
+def is_contextual_follow_up(q: str) -> bool:
+    words = q.split()
+    if len(words) > 6:
+        return False
+    return any(term in q for term in PROGRAM_LEVEL_TERMS + ["yes", "that one", "the first", "the second", "the third"])
+
+
+def format_conversation_history(history: List[dict] | None, limit: int = 4) -> str:
+    if not history:
+        return "No previous conversation."
+
+    lines = []
+    for item in history[-limit:]:
+        question = item.get("question", "").strip()
+        answer = item.get("answer", "").strip()
+        if question:
+            lines.append(f"User: {question}")
+        if answer:
+            lines.append(f"Assistant: {answer[:500]}")
+
+    return "\n".join(lines) if lines else "No previous conversation."
+
+
+def build_contextual_question(question: str, history: List[dict] | None) -> str:
+    q = question.lower().strip()
+    if not history or not is_contextual_follow_up(q):
+        return question
+
+    recent_text = " ".join(
+        f"{item.get('question', '')} {item.get('answer', '')}".lower()
+        for item in history[-4:]
+    )
+    if any(term in recent_text for term in ADMISSION_TERMS + ["which level", "mphil", "phd"]):
+        return f"BUP admission details for {question}"
+
+    return question
+
+
+def route_question(
+    question: str,
+    is_authenticated: bool = False,
+    conversation_history: List[dict] | None = None,
+) -> str:
     q = question.lower()
 
+    if has_identity_intent(q):
+        return "student" if is_authenticated else "auth_required"
+    if has_private_data_intent(q):
+        return "student" if is_authenticated else "auth_required"
+    if has_mental_health_intent(q):
+        return "mental_support"
+    if is_broad_admission_question(q, conversation_history):
+        return "clarify"
     if detect_greeting(q):
         return "greeting"
-    if any(personal in q for personal in ["my marks", "my grades", "my cgpa", "my fees", "my semester", "my registration", "my current courses", "my enrolled"]):
-        return "student" if is_authenticated else "auth_required"
     if any(kw in q for kw in ["who", "what", "when", "where", "why", "how", "explain", "tell me about", "program", "curriculum", "suitable", "recommend", "career", "admission", "eligib", "apply"]):
+        return "rag"
+    if is_contextual_follow_up(q):
         return "rag"
     return "chat"
 
@@ -85,22 +279,24 @@ rag_prompt = PromptTemplate.from_template(
 Use only the provided context to answer the user's public university question.
 
 INSTRUCTIONS:
-- Format the response with clear headings and sections using markdown
-- Use bullet points for lists and numbered lists (1. 2. 3.) for sequential items
-- Organize information logically with brief introductory sentences
+- Be conversational, specific, and easy to scan
+- Prefer a short answer with 3-5 bullets unless the user asks for details
+- Ask one helpful follow-up question when the answer depends on program level, faculty, or degree type
+- Do not include large tables unless the user asks for comparison
 - Use bold for key terms and program names
-- Keep sections concise but informative
-- For program/course lists: Group by faculty/category with clear headers
 - Answer in the same language as the question
 - If you don't know, say 'I don't have information about this'
 - Do not fabricate details
 - Do not reveal private student data unless it is explicitly present in the authenticated student-data context
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks
 
+Recent conversation:
+{conversation_history}
+
 Context: {context}
 Question: {question}
 
-Professional Response:"""
+Helpful response:"""
 )
 
 chat_prompt = PromptTemplate.from_template(
@@ -109,22 +305,41 @@ Engage naturally with the user. Keep answers concise, helpful, and in the same l
 Do not claim access to private student records unless the student-data route provides those records.
 Do not include hidden reasoning, chain-of-thought, or <think> blocks.
 
+Recent conversation:
+{conversation_history}
+
 User: {question}
 Assistant:"""
 )
 
 student_prompt = PromptTemplate.from_template(
-    """You are a student assistant AI with access to verified student records.
-Answer questions based strictly on the provided JSON data.
+    """You are a secure student-record assistant for Bangladesh University of Professionals (BUP).
+You are answering for the authenticated student only.
 
-Data:
+Authenticated registration ID:
+{reg_id}
+
+Authenticated student record:
 {student_data}
+
+Recent conversation:
+{conversation_history}
 
 User Question: {question}
 
-If information is unavailable or unclear, say: "I couldn’t find that information in the records."
-Answer in the same language as the question.
-Do not include hidden reasoning, chain-of-thought, or <think> blocks."""
+INSTRUCTIONS:
+- Answer only from the authenticated student record above.
+- Never reveal, infer, compare, or fetch another student's private data.
+- If the user asks whether the assistant knows them, or asks for their name, answer using the authenticated student's name from the record.
+- If the user asks about another registration ID, refuse briefly.
+- If a field is missing or empty, say that specific information is not available in the record.
+- For direct factual questions, answer in one short sentence.
+- For broader record questions, give a concise bullet list of relevant fields.
+- Answer in the same language and script style as the user's question:
+  English -> English, Bangla -> Bangla, Banglish/transliterated Bangla -> Banglish.
+- Do not include hidden reasoning, chain-of-thought, or <think> blocks.
+
+Secure answer:"""
 )
 
 # -----------------------------
@@ -147,6 +362,7 @@ def router(state: RAGState) -> RAGState:
     state["route"] = route_question(
         state["question"],
         is_authenticated=state.get("is_authenticated", False),
+        conversation_history=state.get("conversation_history"),
     )
     return state
 
@@ -154,11 +370,35 @@ def greeting_agent(state: RAGState) -> RAGState:
     state["answer"] = get_greeting_response(state["question"])
     return state
 
+def clarify_agent(state: RAGState) -> RAGState:
+    state["answer"] = (
+        "Sure. BUP admission depends on the program level.\n\n"
+        "Which one are you interested in?\n\n"
+        "1. Undergraduate\n"
+        "2. Master's\n"
+        "3. MPhil / PhD\n\n"
+        "If you already have a specific program in mind, tell me the program name."
+    )
+    return state
+
+def mental_support_agent(state: RAGState) -> RAGState:
+    state["answer"] = (
+        "I'm really sorry you're feeling this way. You do not have to handle it alone.\n\n"
+        "- If you might hurt yourself or feel unsafe right now, please call local emergency support immediately or ask someone nearby to stay with you.\n"
+        "- If this is about academic pressure, tell me one thing that feels heaviest right now: exams, CGPA, family pressure, finances, or something else.\n"
+        "- I can stay with you here and help you break the next step into something smaller."
+    )
+    return state
+
 def retrieve(state: RAGState) -> RAGState:
     k = state.get("top_k") or 3
     k = max(1, min(int(k), 10))
     retriever = get_retriever(k)
-    docs = retriever.invoke(state["question"])
+    retrieval_question = build_contextual_question(
+        state["question"],
+        state.get("conversation_history"),
+    )
+    docs = retriever.invoke(retrieval_question)
     state["docs"] = docs
     state["context"] = format_docs(docs)
     return state
@@ -167,13 +407,15 @@ def generate(state: RAGState) -> RAGState:
     response = (rag_prompt | llm | StrOutputParser()).invoke({
         "context": state["context"],
         "question": state["question"],
+        "conversation_history": format_conversation_history(state.get("conversation_history")),
     })
     state["answer"] = clean_llm_output(response)
     return state
 
 def chat_agent(state: RAGState) -> RAGState:
     response = (chat_prompt | llm | StrOutputParser()).invoke({
-        "question": state["question"]
+        "question": state["question"],
+        "conversation_history": format_conversation_history(state.get("conversation_history")),
     })
     state["answer"] = clean_llm_output(response)
     return state
@@ -189,6 +431,16 @@ def student_agent(state: RAGState) -> RAGState:
         if not reg_id:
             state["answer"] = "Please log in to access your personal student information."
             return state
+
+        mentioned_reg_ids = set(re.findall(r"\b\d{6,}\b", state["question"]))
+        if mentioned_reg_ids and any(mentioned_reg_id != str(reg_id) for mentioned_reg_id in mentioned_reg_ids):
+            if is_bangla(state["question"]):
+                state["answer"] = "দুঃখিত, আমি শুধুমাত্র আপনার নিজের ব্যক্তিগত ছাত্র তথ্য দেখাতে পারি।"
+            elif is_banglish(state["question"]):
+                state["answer"] = "Dukhito, ami shudhu apnar nijer private student data dekhate pari."
+            else:
+                state["answer"] = "Sorry, I can only show your own private student information."
+            return state
         
         student_data = get_student_data_by_reg_id(reg_id, db)
         if not student_data:
@@ -199,8 +451,10 @@ def student_agent(state: RAGState) -> RAGState:
         formatted_data = {reg_id: student_data}
         
         response = (student_prompt | llm | StrOutputParser()).invoke({
+            "reg_id": reg_id,
             "student_data": json.dumps(formatted_data, indent=2),
             "question": state["question"],
+            "conversation_history": format_conversation_history(state.get("conversation_history")),
         })
         state["answer"] = clean_llm_output(response)
     finally:
@@ -221,6 +475,8 @@ def auth_required_agent(state: RAGState) -> RAGState:
 graph = StateGraph(RAGState)
 graph.add_node("router", router)
 graph.add_node("greeting_agent", greeting_agent)
+graph.add_node("clarify_agent", clarify_agent)
+graph.add_node("mental_support_agent", mental_support_agent)
 graph.add_node("retrieve", retrieve)
 graph.add_node("generate", generate)
 graph.add_node("chat_agent", chat_agent)
@@ -228,23 +484,28 @@ graph.add_node("student_agent", student_agent)
 graph.add_node("auth_required_agent", auth_required_agent)
 
 def route_decision(state: RAGState):
-    match state["route"]:
-        case "greeting":
-            return "greeting_agent"
-        case "rag":
-            return "retrieve"
-        case "chat":
-            return "chat_agent"
-        case "student":
-            return "student_agent"
-        case "auth_required":
-            return "auth_required_agent"
-        case _:
-            return "chat_agent"
+    route = state["route"]
+    if route == "greeting":
+        return "greeting_agent"
+    if route == "clarify":
+        return "clarify_agent"
+    if route == "mental_support":
+        return "mental_support_agent"
+    if route == "rag":
+        return "retrieve"
+    if route == "chat":
+        return "chat_agent"
+    if route == "student":
+        return "student_agent"
+    if route == "auth_required":
+        return "auth_required_agent"
+    return "chat_agent"
 
 graph.set_entry_point("router")
 graph.add_conditional_edges("router", route_decision)
 graph.add_edge("greeting_agent", END)
+graph.add_edge("clarify_agent", END)
+graph.add_edge("mental_support_agent", END)
 graph.add_edge("chat_agent", END)
 graph.add_edge("student_agent", END)
 graph.add_edge("auth_required_agent", END)

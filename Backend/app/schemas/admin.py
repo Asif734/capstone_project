@@ -125,3 +125,58 @@ class AdminMentalHealthSummary(BaseModel):
     high_alerts: int
     moderate_alerts: int
     low_alerts: int
+
+
+class CourseRecordPayload(BaseModel):
+    course_name: str = Field(..., min_length=1, max_length=160)
+    marks: Optional[float] = Field(default=None, ge=0, le=100)
+
+    @field_validator("course_name")
+    @classmethod
+    def strip_course_name(cls, value):
+        return value.strip()
+
+
+class CGPARecordPayload(BaseModel):
+    semester: str = Field(..., min_length=1, max_length=40)
+    cgpa: float = Field(..., ge=0, le=4)
+
+    @field_validator("semester")
+    @classmethod
+    def strip_semester(cls, value):
+        return value.strip()
+
+
+class FinancialRecordPayload(BaseModel):
+    tuition_fee: Optional[int] = Field(default=None, ge=0)
+    paid_amount: Optional[int] = Field(default=None, ge=0)
+    due_amount: Optional[int] = Field(default=None, ge=0)
+    pending_fees: Optional[int] = Field(default=None, ge=0)
+
+
+class AcademicRecordPayload(BaseModel):
+    semester: Optional[str] = Field(default=None, max_length=40)
+    cgpa: Optional[float] = Field(default=None, ge=0, le=4)
+    credits_completed: Optional[int] = Field(default=None, ge=0)
+
+    @field_validator("semester")
+    @classmethod
+    def strip_academic_semester(cls, value):
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class StudentRecordResponse(BaseModel):
+    student: AuthorizedStudentResponse
+    academic: Optional[AcademicRecordPayload] = None
+    financial: FinancialRecordPayload
+    cgpa_records: list[CGPARecordPayload]
+    courses: list[CourseRecordPayload]
+
+
+class StudentRecordUpdate(BaseModel):
+    academic: Optional[AcademicRecordPayload] = None
+    financial: Optional[FinancialRecordPayload] = None
+    cgpa_records: Optional[list[CGPARecordPayload]] = None
+    courses: Optional[list[CourseRecordPayload]] = None

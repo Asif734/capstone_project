@@ -18,6 +18,7 @@ class MentalHealthService:
         self.admin_email = settings.ADMIN_EMAIL or "admin@university.edu"
         self.recent_interactions_limit = 15
         self.alert_cooldown_hours = 24
+        self._init_rule_based_patterns()
 
         # Load ML model and preprocessing artifacts
         model_dir = os.path.dirname(__file__)
@@ -31,7 +32,6 @@ class MentalHealthService:
         except FileNotFoundError:
             print("ML model files not found, falling back to rule-based detection.")
             self.use_ml = False
-            self._init_rule_based_patterns()
 
     def _repair_vectorizer_compatibility(self) -> None:
         """Restore TF-IDF internals when loading newer sklearn pickles."""
@@ -58,6 +58,11 @@ class MentalHealthService:
             r"\bcan't go on\b",
             r"\bi'm done\b",
             r"\bscared of living\b",
+            r"\bi can't continue\b",
+            r"\bi cannot continue\b",
+            r"\bi should quit\b",
+            r"\bwant to quit\b",
+            r"\bno,? ami sekhane jete chai na\b",
         ]
 
         self.medium_risk_patterns = [
@@ -75,6 +80,8 @@ class MentalHealthService:
             r"\bcan'?t handle\b",
             r"\bkeep failing\b",
             r"\bnot good enough\b",
+            r"\bfeeling low\b",
+            r"\bfeel low\b",
         ]
 
         self.support_seeking_patterns = [
@@ -133,6 +140,8 @@ class MentalHealthService:
 
     def _analyze_with_ml(self, interactions: List[Dict]) -> Dict[str, object]:
         """Analyze chat history using ML model."""
+        rule_analysis = self._analyze_with_rules(interactions)
+
         # Combine recent messages into a single text for prediction
         recent_messages = []
         for interaction in interactions[-self.recent_interactions_limit:]:
@@ -174,6 +183,10 @@ class MentalHealthService:
             "predicted_class": predicted_class,
             "confidence": confidence,
             "recent_messages": recent_messages,
+            "rule_score": rule_analysis["score"],
+            "high_hits": rule_analysis["high_hits"],
+            "medium_hits": rule_analysis["medium_hits"],
+            "support_hits": rule_analysis["support_hits"],
         }
 
     def _preprocess_text(self, text: str) -> str:
@@ -239,6 +252,10 @@ class MentalHealthService:
             confidence = float(analysis.get("confidence", 0.0) or 0.0)
             risk_level = analysis.get("risk_level", "low")
 
+            if analysis.get("high_hits"):
+                return "critical"
+            if int(analysis.get("rule_score", 0) or 0) >= 18:
+                return "high"
             if predicted_class == "Suicidal" and confidence >= 0.7:
                 return "critical"
             if risk_level == "high" and confidence >= 0.9:
@@ -257,6 +274,10 @@ class MentalHealthService:
 
     def should_alert(self, analysis: Dict[str, object]) -> bool:
         if self.use_ml:
+            if analysis.get("high_hits"):
+                return True
+            if int(analysis.get("rule_score", 0) or 0) >= 12:
+                return True
             risk_level = analysis.get("risk_level", "normal")
             confidence = analysis.get("confidence", 0.0)
             return risk_level in ["high", "moderate"] and confidence > 0.7
@@ -290,7 +311,10 @@ class MentalHealthService:
         severity = self.determine_severity(analysis)
         
         if self.use_ml:
+            rule_hits = analysis.get("high_hits", []) + analysis.get("medium_hits", []) + analysis.get("support_hits", [])
             matched_phrases = f"ML Prediction: {analysis.get('predicted_class', 'Unknown')} (confidence: {analysis.get('confidence', 0.0):.2f})"
+            if rule_hits:
+                matched_phrases = f"{matched_phrases}; Rule hits: {', '.join(rule_hits)}"
         else:
             matched_phrases = ", ".join(analysis["high_hits"] + analysis["medium_hits"] + analysis["support_hits"])
 

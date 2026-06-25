@@ -21,6 +21,19 @@ const blankStudentForm = {
   status: 'active',
 };
 
+const blankRecordForm = {
+  reg_id: '',
+  academic_semester: '',
+  academic_cgpa: '',
+  credits_completed: '',
+  tuition_fee: '',
+  paid_amount: '',
+  due_amount: '',
+  pending_fees: '',
+  cgpa_records: '',
+  courses: '',
+};
+
 const severityOrder = {
   critical: 0,
   high: 1,
@@ -70,6 +83,8 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
   const [studentForm, setStudentForm] = useState(blankStudentForm);
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentDetail, setStudentDetail] = useState(null);
+  const [recordForm, setRecordForm] = useState(blankRecordForm);
+  const [recordStudent, setRecordStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -165,6 +180,11 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
     setStudentForm((current) => ({ ...current, [name]: value }));
   };
 
+  const handleRecordFormChange = (event) => {
+    const { name, value } = event.target;
+    setRecordForm((current) => ({ ...current, [name]: value }));
+  };
+
   const resetStudentForm = () => {
     setStudentForm(blankStudentForm);
     setEditingStudent(null);
@@ -240,6 +260,10 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       if (studentDetail?.student?.reg_id === student.reg_id) {
         setStudentDetail(null);
       }
+      if (recordForm.reg_id === student.reg_id) {
+        setRecordForm(blankRecordForm);
+        setRecordStudent(null);
+      }
       setSuccess('Student removed.');
     } catch (err) {
       setError(err.message || 'Unable to remove student.');
@@ -259,6 +283,8 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
     setSelectedAlert(null);
     setNoteDraft('');
     setStudentDetail(null);
+    setRecordForm(blankRecordForm);
+    setRecordStudent(null);
     resetStudentForm();
     if (onAdminLogout) onAdminLogout();
   };
@@ -278,6 +304,109 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       setError(err.message || 'Unable to load student mental-health profile.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStudentRecords = async (regId) => {
+    if (!regId) return;
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const detail = await adminAPI.getStudentRecords(activeToken, regId);
+      setRecordStudent(detail.student);
+      setRecordForm({
+        reg_id: detail.student.reg_id,
+        academic_semester: detail.academic?.semester || '',
+        academic_cgpa: detail.academic?.cgpa ?? '',
+        credits_completed: detail.academic?.credits_completed ?? '',
+        tuition_fee: detail.financial?.tuition_fee ?? '',
+        paid_amount: detail.financial?.paid_amount ?? '',
+        due_amount: detail.financial?.due_amount ?? '',
+        pending_fees: detail.financial?.pending_fees ?? '',
+        cgpa_records: (detail.cgpa_records || [])
+          .map((record) => `${record.semester}: ${record.cgpa}`)
+          .join('\n'),
+        courses: (detail.courses || [])
+          .map((course) => `${course.course_name}: ${course.marks ?? ''}`)
+          .join('\n'),
+      });
+      setActiveTab('records');
+    } catch (err) {
+      setError(err.message || 'Unable to load student records.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseCgpaLines = (text) => {
+    return text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [semester, ...valueParts] = line.split(':');
+        const cgpa = Number(valueParts.join(':').trim());
+        if (!semester?.trim() || Number.isNaN(cgpa)) {
+          throw new Error('Use CGPA format like "sem1: 3.65".');
+        }
+        return { semester: semester.trim(), cgpa };
+      });
+  };
+
+  const parseCourseLines = (text) => {
+    return text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [courseName, ...valueParts] = line.split(':');
+        const marksText = valueParts.join(':').trim();
+        const marks = marksText === '' ? null : Number(marksText);
+        if (!courseName?.trim() || (marksText !== '' && Number.isNaN(marks))) {
+          throw new Error('Use course format like "Data Structures: 87".');
+        }
+        return { course_name: courseName.trim(), marks };
+      });
+  };
+
+  const optionalNumber = (value) => (value === '' ? null : Number(value));
+
+  const handleSaveRecords = async (event) => {
+    event.preventDefault();
+    if (!recordForm.reg_id) {
+      setError('Select a student first.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const payload = {
+        academic: {
+          semester: recordForm.academic_semester || null,
+          cgpa: optionalNumber(recordForm.academic_cgpa),
+          credits_completed: optionalNumber(recordForm.credits_completed),
+        },
+        financial: {
+          tuition_fee: optionalNumber(recordForm.tuition_fee),
+          paid_amount: optionalNumber(recordForm.paid_amount),
+          due_amount: optionalNumber(recordForm.due_amount),
+          pending_fees: optionalNumber(recordForm.pending_fees),
+        },
+        cgpa_records: parseCgpaLines(recordForm.cgpa_records),
+        courses: parseCourseLines(recordForm.courses),
+      };
+
+      const updated = await adminAPI.updateStudentRecords(activeToken, recordForm.reg_id, payload);
+      setRecordStudent(updated.student);
+      setSuccess('Student academic and billing records updated.');
+    } catch (err) {
+      setError(err.message || 'Unable to save student records.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -396,6 +525,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
           {[
             ['alerts', 'Alerts', AlertTriangle],
             ['students', 'Authorized Students', UserPlus],
+            ['records', 'Student Records', ClipboardList],
           ].map(([key, label, Icon]) => (
             <button
               key={key}
@@ -560,7 +690,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
               )}
             </aside>
           </section>
-        ) : (
+        ) : activeTab === 'students' ? (
           <section className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
             <form
               onSubmit={handleSaveStudent}
@@ -681,6 +811,13 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
                                 <Eye className="h-4 w-4" />
                                 <span>Profile</span>
                               </button>
+                              <button
+                                onClick={() => loadStudentRecords(student.reg_id)}
+                                className="inline-flex items-center justify-center rounded-lg border border-purple-500/30 px-3 py-1.5 text-purple-100 hover:bg-purple-500/10"
+                              >
+                                <ClipboardList className="h-4 w-4" />
+                                <span>Records</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -734,6 +871,127 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
                 </div>
               )}
             </div>
+          </section>
+        ) : (
+          <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <aside className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4">
+              <h2 className="mb-3 font-semibold text-white">Choose Student</h2>
+              <select
+                value={recordForm.reg_id}
+                onChange={(event) => loadStudentRecords(event.target.value)}
+                className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
+              >
+                <option value="">Select a student</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.reg_id}>
+                    {student.reg_id} - {student.name || student.email}
+                  </option>
+                ))}
+              </select>
+
+              {recordStudent && (
+                <div className="mt-4 rounded-lg bg-slate-900/50 p-3 text-sm text-purple-100">
+                  <div className="font-medium text-white">{recordStudent.name || recordStudent.reg_id}</div>
+                  <div>{recordStudent.email}</div>
+                  <div>{recordStudent.department || 'Department N/A'}</div>
+                </div>
+              )}
+            </aside>
+
+            <form
+              onSubmit={handleSaveRecords}
+              className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4"
+            >
+              <div className="mb-4 flex items-center space-x-2 text-white">
+                <ClipboardList className="h-5 w-5 text-purple-200" />
+                <h2 className="font-semibold">Academic and Billing Records</h2>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-purple-200/70">
+                    Current Academic Summary
+                  </h3>
+                  {[
+                    ['academic_semester', 'Academic Semester', 'sem4'],
+                    ['academic_cgpa', 'Current CGPA', '3.65'],
+                    ['credits_completed', 'Credits Completed', '48'],
+                  ].map(([name, label, placeholder]) => (
+                    <div key={name}>
+                      <label className="mb-1 block text-sm text-purple-200">{label}</label>
+                      <input
+                        name={name}
+                        value={recordForm[name]}
+                        onChange={handleRecordFormChange}
+                        type={name === 'academic_semester' ? 'text' : 'number'}
+                        step={name === 'academic_cgpa' ? '0.01' : '1'}
+                        className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
+                        placeholder={placeholder}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-purple-200/70">
+                    Billing
+                  </h3>
+                  {[
+                    ['tuition_fee', 'Tuition Fee', '153000'],
+                    ['paid_amount', 'Paid Amount', '100000'],
+                    ['due_amount', 'Due Amount', '53000'],
+                    ['pending_fees', 'Pending Fees', '53000'],
+                  ].map(([name, label, placeholder]) => (
+                    <div key={name}>
+                      <label className="mb-1 block text-sm text-purple-200">{label}</label>
+                      <input
+                        name={name}
+                        value={recordForm[name]}
+                        onChange={handleRecordFormChange}
+                        type="number"
+                        className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
+                        placeholder={placeholder}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm text-purple-200">Semester CGPA</label>
+                  <textarea
+                    name="cgpa_records"
+                    value={recordForm.cgpa_records}
+                    onChange={handleRecordFormChange}
+                    rows="8"
+                    className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 font-mono text-sm text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
+                    placeholder={'sem1: 3.50\nsem2: 3.70'}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-purple-200">Course Marks</label>
+                  <textarea
+                    name="courses"
+                    value={recordForm.courses}
+                    onChange={handleRecordFormChange}
+                    rows="8"
+                    className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 font-mono text-sm text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
+                    placeholder={'Data Structures: 87\nDatabase Systems: 91'}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving || !recordForm.reg_id}
+                className="mt-5 flex items-center justify-center space-x-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 font-medium text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-60"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{saving ? 'Saving...' : 'Save Records'}</span>
+              </button>
+            </form>
           </section>
         )}
       </div>

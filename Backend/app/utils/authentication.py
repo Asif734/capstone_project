@@ -161,7 +161,7 @@ def verify_token(token: str) -> Dict[str, Any] | None:
         reg_id = payload.get("reg_id")
         token_type = payload.get("type")
         
-        if not user_id or not reg_id:
+        if not user_id or not reg_id or token_type != "access":
             return None
         
         return {

@@ -466,6 +466,7 @@ def get_student_data_by_reg_id(reg_id: str, db: Session) -> dict | None:
     
     return {
         "name": user.name,
+        "email": user.email,
         "year": user.year,
         "semester": user.semester,
         "department": user.department,

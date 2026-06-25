@@ -6,7 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.database import get_db
-from app.db.student_tables import AuthorizedUser, MentalHealthAlert
+from app.db.student_tables import (
+    AcademicRecord,
+    AuthorizedUser,
+    CGPARecord,
+    FinancialRecord,
+    MentalHealthAlert,
+    StudentCourse,
+)
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -17,6 +24,8 @@ from app.schemas.admin import (
     MentalHealthAlertResponse,
     MentalHealthAlertUpdate,
     StudentMentalHealthResponse,
+    StudentRecordResponse,
+    StudentRecordUpdate,
 )
 
 
@@ -116,6 +125,46 @@ def student_lookup_for_alerts(db: Session, alerts: list[MentalHealthAlert]) -> d
 
     students = db.query(AuthorizedUser).filter(AuthorizedUser.reg_id.in_(reg_ids)).all()
     return {student.reg_id: student for student in students}
+
+
+def serialize_student_record(student: AuthorizedUser, db: Session) -> StudentRecordResponse:
+    academic = db.query(AcademicRecord).filter(AcademicRecord.reg_id == student.reg_id).first()
+    financial = db.query(FinancialRecord).filter(FinancialRecord.reg_id == student.reg_id).first()
+    cgpa_records = (
+        db.query(CGPARecord)
+        .filter(CGPARecord.reg_id == student.reg_id)
+        .order_by(CGPARecord.semester.asc())
+        .all()
+    )
+    courses = (
+        db.query(StudentCourse)
+        .filter(StudentCourse.reg_id == student.reg_id)
+        .order_by(StudentCourse.course_name.asc())
+        .all()
+    )
+
+    return StudentRecordResponse(
+        student=student,
+        academic={
+            "semester": academic.semester,
+            "cgpa": academic.cgpa,
+            "credits_completed": academic.credits_completed,
+        } if academic else None,
+        financial={
+            "tuition_fee": financial.tuition_fee if financial else 0,
+            "paid_amount": financial.paid_amount if financial else 0,
+            "due_amount": financial.due_amount if financial else 0,
+            "pending_fees": financial.pending_fees if financial else 0,
+        },
+        cgpa_records=[
+            {"semester": record.semester, "cgpa": record.cgpa}
+            for record in cgpa_records
+        ],
+        courses=[
+            {"course_name": course.course_name, "marks": course.marks}
+            for course in courses
+        ],
+    )
 
 
 @router.get("/authorized-students", response_model=list[AuthorizedStudentResponse])
@@ -229,6 +278,94 @@ def delete_authorized_student(
     db.delete(student)
     db.commit()
     return None
+
+
+@router.get("/students/{reg_id}/records", response_model=StudentRecordResponse)
+def get_student_records(
+    reg_id: str,
+    _: None = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    normalized_reg_id = reg_id.strip().upper()
+    student = db.query(AuthorizedUser).filter(AuthorizedUser.reg_id == normalized_reg_id).first()
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    return serialize_student_record(student, db)
+
+
+@router.patch("/students/{reg_id}/records", response_model=StudentRecordResponse)
+def update_student_records(
+    reg_id: str,
+    data: StudentRecordUpdate,
+    _: None = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    normalized_reg_id = reg_id.strip().upper()
+    student = db.query(AuthorizedUser).filter(AuthorizedUser.reg_id == normalized_reg_id).first()
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    if data.academic is not None:
+        academic = db.query(AcademicRecord).filter(AcademicRecord.reg_id == normalized_reg_id).first()
+        if not academic:
+            academic = AcademicRecord(
+                reg_id=normalized_reg_id,
+                semester=data.academic.semester or f"sem{student.semester or 1}",
+                cgpa=data.academic.cgpa if data.academic.cgpa is not None else 0,
+                credits_completed=data.academic.credits_completed,
+            )
+            db.add(academic)
+        else:
+            if data.academic.semester is not None:
+                academic.semester = data.academic.semester
+            if data.academic.cgpa is not None:
+                academic.cgpa = data.academic.cgpa
+            if data.academic.credits_completed is not None:
+                academic.credits_completed = data.academic.credits_completed
+
+    if data.financial is not None:
+        financial = db.query(FinancialRecord).filter(FinancialRecord.reg_id == normalized_reg_id).first()
+        if not financial:
+            financial = FinancialRecord(reg_id=normalized_reg_id)
+            db.add(financial)
+
+        if data.financial.tuition_fee is not None:
+            financial.tuition_fee = data.financial.tuition_fee
+        if data.financial.paid_amount is not None:
+            financial.paid_amount = data.financial.paid_amount
+        if data.financial.due_amount is not None:
+            financial.due_amount = data.financial.due_amount
+        if data.financial.pending_fees is not None:
+            financial.pending_fees = data.financial.pending_fees
+
+    if data.cgpa_records is not None:
+        db.query(CGPARecord).filter(CGPARecord.reg_id == normalized_reg_id).delete()
+        for record in data.cgpa_records:
+            db.add(CGPARecord(
+                reg_id=normalized_reg_id,
+                semester=record.semester,
+                cgpa=record.cgpa,
+            ))
+
+    if data.courses is not None:
+        db.query(StudentCourse).filter(StudentCourse.reg_id == normalized_reg_id).delete()
+        for course in data.courses:
+            db.add(StudentCourse(
+                reg_id=normalized_reg_id,
+                course_name=course.course_name,
+                marks=course.marks,
+            ))
+
+    db.commit()
+    db.refresh(student)
+    return serialize_student_record(student, db)
 
 
 @router.get("/mental-health-summary", response_model=AdminMentalHealthSummary)

@@ -229,6 +229,21 @@ export const adminAPI = {
     });
   },
 
+  getStudentRecords: async (adminToken, regId) => {
+    return apiCall(`/admin/students/${regId}/records`, {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  updateStudentRecords: async (adminToken, regId, data) => {
+    return apiCall(`/admin/students/${regId}/records`, {
+      method: 'PATCH',
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(data),
+    });
+  },
+
   login: async (email, password) => {
     return apiCall('/admin/login', {
       method: 'POST',

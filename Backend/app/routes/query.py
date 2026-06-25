@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException, Header
 from app.schemas.models import QueryRequest, QueryResponse, SourceDocument
-from app.utils.graph import is_public_cacheable_route, rag_graph, route_question
+from app.utils.graph import (
+    build_contextual_question,
+    is_public_cacheable_route,
+    rag_graph,
+    route_question,
+)
 from app.services.memory_service import MemoryService
 from app.services.mental_health_service import MentalHealthService
 from app.services.redis_service import RedisSemanticCacheService
@@ -54,16 +59,23 @@ async def query_documents(
                 user_id = payload.get("user_id")
                 user_reg_id = payload.get("reg_id")
 
-        route = route_question(request.question, is_authenticated=is_authenticated)
+        interaction_user_id = str(user_id) if user_id is not None else request.user_id
+        conversation_history = memory_service.get_user_memory(interaction_user_id)[-6:]
+
+        route = route_question(
+            request.question,
+            is_authenticated=is_authenticated,
+            conversation_history=conversation_history,
+        )
+        cache_question = build_contextual_question(request.question, conversation_history)
         if is_public_cacheable_route(route):
-            cached = redis_cache_service.get_similar_answer(request.question)
+            cached = redis_cache_service.get_similar_answer(cache_question)
             if cached:
                 sources = [
                     SourceDocument(**source)
                     for source in cached.get("sources", [])
                 ]
                 answer = cached["answer"]
-                interaction_user_id = str(user_id) if user_id is not None else request.user_id
                 memory_service.add_interaction(
                     user_id=interaction_user_id,
                     question=request.question,
@@ -84,7 +96,8 @@ async def query_documents(
             "route": route,
             "is_authenticated": is_authenticated,
             "user_reg_id": user_reg_id,
-            "top_k": request.top_k
+            "top_k": request.top_k,
+            "conversation_history": conversation_history,
         }
 
         result = rag_graph.invoke(state)
@@ -102,7 +115,6 @@ async def query_documents(
             ))
 
         answer = result.get("answer", "")
-        interaction_user_id = str(user_id) if user_id is not None else request.user_id
 
         memory_service.add_interaction(
             user_id= interaction_user_id,
@@ -118,7 +130,7 @@ async def query_documents(
 
         if is_public_cacheable_route(result.get("route")):
             redis_cache_service.set_answer(
-                question=request.question,
+                question=cache_question,
                 answer=answer,
                 sources=sources_to_dicts(sources),
                 route=result.get("route", "rag"),
@@ -131,4 +143,3 @@ async def query_documents(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
-

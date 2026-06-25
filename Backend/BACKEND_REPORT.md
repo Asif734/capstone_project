@@ -499,8 +499,7 @@ The model pipeline:
 9. Encodes labels with `LabelEncoder`.
 10. Splits data into train/test with stratification.
 11. Trains multiple classifiers.
-12. Logs metrics to MLflow.
-13. Saves the selected model and artifacts with Joblib.
+12. Saves the selected model and artifacts with Joblib.
 
 Models compared in the training script:
 
@@ -510,7 +509,7 @@ Models compared in the training script:
 - LightGBM
 - AdaBoost
 
-Recorded MLflow metrics from `Backend/mlflow.db` include:
+The training script compares the following model results:
 
 | Model | Accuracy | Macro ROC-AUC |
 | --- | ---: | ---: |
@@ -526,7 +525,7 @@ The deployed runtime service expects the primary detector to be LightGBM, and th
 app/services/test_mental_health_service.py
 ```
 
-There is a small experiment-log inconsistency: an MLflow `Best Model` run records `best_model_name=Logistic Regression`, while the dedicated deployment script and runtime artifacts use LightGBM. Based on the recorded metrics and deployed artifact behavior, LightGBM is the production model in this backend.
+The deployment script and runtime artifacts use LightGBM as the primary production model for the backend.
 
 ## 11. Alert Creation and Admin Notification
 
