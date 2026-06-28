@@ -186,6 +186,7 @@ class MentalHealthAlert(Base):
     score = Column(Integer, nullable=False)
     predicted_class = Column(String, nullable=True)
     confidence = Column(Float, nullable=True)
+    summary = Column(Text, nullable=True)
     matched_phrases = Column(String, nullable=True)
     question_sample = Column(Text, nullable=True)
     status = Column(String, default="new", nullable=False, index=True)

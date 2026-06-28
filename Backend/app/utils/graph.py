@@ -23,15 +23,20 @@ class RAGState(TypedDict):
     conversation_history: List[dict] | None
 
 GREETING_RESPONSES = {
-    "hello": "Hello. How can I help you today?",
-    "hi": "Hi. What would you like to know?",
-    "hey": "Hey. How can I help?",
-    "good morning": "Good morning. How can I assist you?",
-    "good afternoon": "Good afternoon. How can I assist you?",
-    "good evening": "Good evening. What brings you here today?",
-    "how are you": "I'm ready to help. How are you doing?",
-    "what's up": "I'm here and ready to help.",
+    "hello": "Hello! How can I help you today?",
+    "hi": "Hi! What would you like to know?",
+    "hey": "Hey! How can I help?",
+    "good morning": "Good morning! How can I assist you?",
+    "good afternoon": "Good afternoon! How can I assist you?",
+    "good evening": "Good evening! What brings you here today?",
+    "how are you": "I'm doing well, buddy. How are you doing?",
+    "how are you doing": "I'm doing well, buddy. How are you doing?",
+    "how are you feeling": "I'm feeling good and ready to help. How are you feeling?",
+    "what's up": "Not much, buddy. How can I help?",
+    "whats up": "Not much, buddy. How can I help?",
 }
+
+CASUAL_ADDRESS_PATTERN = re.compile(r"\b(buddy|bro|friend|dear)\b", re.IGNORECASE)
 
 # -----------------------------
 # Detection Logic
@@ -41,11 +46,13 @@ def detect_greeting(q: str) -> bool:
     return any(re.search(rf"\b{re.escape(key)}\b", q) for key in GREETING_RESPONSES.keys())
 
 def get_greeting_response(q: str) -> str:
-    q = q.lower()
+    q = q.lower().strip()
     for key, resp in GREETING_RESPONSES.items():
         if re.search(rf"\b{re.escape(key)}\b", q):
             return resp
-    return "Hey there! 😊 How can I help you today?"
+    if CASUAL_ADDRESS_PATTERN.search(q):
+        return "Hey buddy! How can I help you today?"
+    return "Hey there! How can I help you today?"
 
 
 FIRST_PERSON_PATTERN = re.compile(
@@ -123,25 +130,56 @@ PROGRAM_LEVEL_TERMS = [
     "doctorate",
 ]
 
-MENTAL_HEALTH_TERMS = [
-    "stressed",
-    "stress",
+CRISIS_TERMS = [
+    "i want to die",
+    "don't want to live",
+    "dont want to live",
+    "do not want to live",
+    "kill myself",
+    "end my life",
+    "no reason to live",
+    "not worth living",
+    "self harm",
+    "suicidal",
+    "can't continue",
+    "cannot continue",
+]
+
+SUPPORT_TERMS = [
+    "not feeling good",
+    "don't feel good",
+    "dont feel good",
+    "feeling bad",
+    "feel bad",
     "feeling low",
     "feel low",
+    "stressed",
+    "stress",
+    "can't stay positive",
+    "cant stay positive",
     "depressed",
     "anxious",
     "anxiety",
-    "can't continue",
-    "cannot continue",
     "should quit",
     "want to quit",
-    "i want to die",
-    "kill myself",
-    "end my life",
-    "self harm",
-    "suicidal",
     "sekhane jete chai na",
 ]
+
+ACADEMIC_WORRY_PATTERN = re.compile(
+    r"\b("
+    r"not going well|worried|worry|afraid|scared|tense|panic|upset|sad|bad|worse|fail|failed|"
+    r"can't stay positive|cant stay positive"
+    r")\b.*\b("
+    r"academic|academics|study|studies|result|results|marks?|grades?|cgpa|gpa|exam|exams|semester"
+    r")\b|"
+    r"\b("
+    r"academic|academics|study|studies|result|results|marks?|grades?|cgpa|gpa|exam|exams|semester"
+    r")\b.*\b("
+    r"not going well|worried|worry|afraid|scared|tense|panic|upset|sad|bad|worse|fail|failed|"
+    r"can't stay positive|cant stay positive"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 def has_identity_intent(q: str) -> bool:
@@ -162,11 +200,56 @@ def is_bangla(text: str) -> bool:
 
 def is_banglish(text: str) -> bool:
     q = text.lower()
-    return any(term in q for term in ["ami", "amar", "koto", "kon", "konta", "naam", "nam"])
+    banglish_terms = [
+        "ami", "amr", "amar", "tmi", "tumi", "apni", "apnar", "kemon",
+        "acho", "achi", "valo", "bhalo", "kharap", "keno", "ki", "kisu",
+        "kichu", "koto", "kon", "konta", "naam", "nam", "bolen", "bolo",
+        "hobe", "hocche", "lagche",
+    ]
+    return any(re.search(rf"\b{re.escape(term)}\b", q) for term in banglish_terms)
 
 
-def has_mental_health_intent(q: str) -> bool:
-    return any(term in q for term in MENTAL_HEALTH_TERMS)
+def response_language_instruction(text: str) -> str:
+    if is_bangla(text):
+        return "Reply in Bangla using Bengali script only."
+    if is_banglish(text):
+        return "Reply in Banglish, using romanized Bangla words and English letters only. Do not use Bengali script."
+    return "Reply in English only. Do not use Bengali script."
+
+
+def has_crisis_intent(q: str) -> bool:
+    return any(term in q for term in CRISIS_TERMS)
+
+
+def has_support_intent(q: str) -> bool:
+    return any(term in q for term in SUPPORT_TERMS)
+
+
+def has_academic_worry_intent(q: str) -> bool:
+    return bool(ACADEMIC_WORRY_PATTERN.search(q))
+
+
+def is_support_follow_up(q: str, conversation_history: List[dict] | None = None) -> bool:
+    if len(q.split()) > 4 or not conversation_history:
+        return False
+
+    if q.strip(" ?.!").lower() not in {"why", "why not", "what should i do", "what now"}:
+        return False
+
+    recent_text = " ".join(
+        f"{item.get('question', '')} {item.get('answer', '')}".lower()
+        for item in conversation_history[-3:]
+    )
+    return any(
+        term in recent_text
+        for term in [
+            "feeling this way",
+            "academic pressure",
+            "can't stay positive",
+            "cant stay positive",
+            "result is going to be worse",
+        ]
+    )
 
 
 def is_broad_admission_question(q: str, conversation_history: List[dict] | None = None) -> bool:
@@ -237,10 +320,14 @@ def route_question(
 
     if has_identity_intent(q):
         return "student" if is_authenticated else "auth_required"
+    if has_crisis_intent(q):
+        return "mental_support"
+    if is_support_follow_up(q, conversation_history):
+        return "mental_support"
+    if has_support_intent(q) or has_academic_worry_intent(q):
+        return "mental_support"
     if has_private_data_intent(q):
         return "student" if is_authenticated else "auth_required"
-    if has_mental_health_intent(q):
-        return "mental_support"
     if is_broad_admission_question(q, conversation_history):
         return "clarify"
     if detect_greeting(q):
@@ -284,11 +371,14 @@ INSTRUCTIONS:
 - Ask one helpful follow-up question when the answer depends on program level, faculty, or degree type
 - Do not include large tables unless the user asks for comparison
 - Use bold for key terms and program names
-- Answer in the same language as the question
+- Follow the required response language exactly
 - If you don't know, say 'I don't have information about this'
 - Do not fabricate details
 - Do not reveal private student data unless it is explicitly present in the authenticated student-data context
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks
+
+Required response language:
+{response_language}
 
 Recent conversation:
 {conversation_history}
@@ -301,9 +391,37 @@ Helpful response:"""
 
 chat_prompt = PromptTemplate.from_template(
     """You are a secure multilingual assistant for Bangladesh University of Professionals (BUP).
-Engage naturally with the user. Keep answers concise, helpful, and in the same language as the user's message.
+Engage naturally with the user. Keep answers concise and helpful.
 Do not claim access to private student records unless the student-data route provides those records.
+Follow the required response language exactly.
 Do not include hidden reasoning, chain-of-thought, or <think> blocks.
+
+Required response language:
+{response_language}
+
+Recent conversation:
+{conversation_history}
+
+User: {question}
+Assistant:"""
+)
+
+mental_support_prompt = PromptTemplate.from_template(
+    """You are a calm, supportive assistant for Bangladesh University of Professionals (BUP).
+The user is sharing stress, low mood, or academic worry.
+
+INSTRUCTIONS:
+- Do not jump directly to "contact BUP well-being cell" for normal stress.
+- First try to understand the exact problem by asking one gentle follow-up question.
+- Keep the response to 2 short sentences.
+- Validate the feeling briefly, then ask what specific part is hardest.
+- If academics are mentioned, ask whether the main issue is exams, CGPA/results, attendance, family pressure, finances, or time management.
+- Do not claim access to private student records.
+- Follow the required response language exactly.
+- Do not include hidden reasoning, chain-of-thought, or <think> blocks.
+
+Required response language:
+{response_language}
 
 Recent conversation:
 {conversation_history}
@@ -335,9 +453,11 @@ INSTRUCTIONS:
 - If a field is missing or empty, say that specific information is not available in the record.
 - For direct factual questions, answer in one short sentence.
 - For broader record questions, give a concise bullet list of relevant fields.
-- Answer in the same language and script style as the user's question:
-  English -> English, Bangla -> Bangla, Banglish/transliterated Bangla -> Banglish.
+- Follow the required response language exactly.
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks.
+
+Required response language:
+{response_language}
 
 Secure answer:"""
 )
@@ -382,6 +502,15 @@ def clarify_agent(state: RAGState) -> RAGState:
     return state
 
 def mental_support_agent(state: RAGState) -> RAGState:
+    if not has_crisis_intent(state["question"].lower()):
+        response = (mental_support_prompt | llm | StrOutputParser()).invoke({
+            "question": state["question"],
+            "conversation_history": format_conversation_history(state.get("conversation_history")),
+            "response_language": response_language_instruction(state["question"]),
+        })
+        state["answer"] = clean_llm_output(response)
+        return state
+
     state["answer"] = (
         "I'm really sorry you're feeling this way. You do not have to handle it alone.\n\n"
         "- If you might hurt yourself or feel unsafe right now, please call local emergency support immediately or ask someone nearby to stay with you.\n"
@@ -408,6 +537,7 @@ def generate(state: RAGState) -> RAGState:
         "context": state["context"],
         "question": state["question"],
         "conversation_history": format_conversation_history(state.get("conversation_history")),
+        "response_language": response_language_instruction(state["question"]),
     })
     state["answer"] = clean_llm_output(response)
     return state
@@ -416,6 +546,7 @@ def chat_agent(state: RAGState) -> RAGState:
     response = (chat_prompt | llm | StrOutputParser()).invoke({
         "question": state["question"],
         "conversation_history": format_conversation_history(state.get("conversation_history")),
+        "response_language": response_language_instruction(state["question"]),
     })
     state["answer"] = clean_llm_output(response)
     return state
@@ -455,6 +586,7 @@ def student_agent(state: RAGState) -> RAGState:
             "student_data": json.dumps(formatted_data, indent=2),
             "question": state["question"],
             "conversation_history": format_conversation_history(state.get("conversation_history")),
+            "response_language": response_language_instruction(state["question"]),
         })
         state["answer"] = clean_llm_output(response)
     finally:

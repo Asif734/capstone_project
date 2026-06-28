@@ -165,6 +165,46 @@
       "timestamp": "2026-06-25T07:46:16.114891",
       "question": "i am feeling stressed",
       "answer": "I'm sorry you're feeling stressed. BUP's Student Support Office provides counseling \u2014 contact them for assistance."
+    },
+    {
+      "timestamp": "2026-06-27T09:55:49.924310",
+      "question": "how are you buddy?",
+      "answer": "I'm ready to help. How are you doing?"
+    },
+    {
+      "timestamp": "2026-06-27T10:06:47.465819",
+      "question": "how are you buddy?",
+      "answer": "I'm doing well, buddy. How are you doing?"
+    },
+    {
+      "timestamp": "2026-06-27T10:07:16.748976",
+      "question": "i am doing well too. thank you for asking",
+      "answer": "You're welcome! Stay positive and keep up the good work. \ud83d\ude0a"
+    },
+    {
+      "timestamp": "2026-06-27T10:08:02.438291",
+      "question": "i can't stay positive, i think my result is going to be worse than before",
+      "answer": "Please log in to access your personal student information. You can still ask about admissions or general university info."
+    },
+    {
+      "timestamp": "2026-06-27T10:12:08.363664",
+      "question": "why?",
+      "answer": "blocks\"\n\nSo we write the response in plain English.\n\nLet's write the response in 3-5 bullets? But the user asked \"why?\" which is a short question. We can do:\n\n- Be conversational: \"I'm sorry to hear you're feeling that way!\"\n- Then: \"I don't have access to your personal results without logging in. Please log in to check your results.\"\n- Then: one follow-up question: \"What specific part of your results are you concerned about?\"\n\nBut the instructions say: \"Prefer a short answer with 3-5 bullets\". So we can do:\n\n- I'm sorry to hear you're feeling that way!\n- I don't have access to your personal results without you logging in.\n- Please log in to view your results.\n- What specific part of your results are you concerned about?\n\nBut note: the user might not have logged in. We are not fabricating.\n\nAlternatively, we can do:\n\n- I understand you're worried about your results.\n- **I don't have access to your personal student data** without you logging in.\n- To check your results, please log in to your BUP account.\n- Would you like help with anything else?\n\nBut the user asked \"why?\" so we are not answering that. We are saying we don't have the information.\n\nGiven the instructions, I think the best response is:\n\nI don't have access to your personal results without you logging in. Please log in to check your results. What would you like to know about your program?\n\nBut the user asked \"why?\" so we can say:\n\nI don't know why you think your results are worse than before without seeing your actual results. Please log in to check.\n\nHowever, the instructions say: \"Do not fabricate details\". So we must not say we know why.\n\nLet me re-read the context: the context provided is about the university's programs and structure, but it doesn't have any information about the user's results.\n\nSo the response should be:\n\nI don't have information about your specific results. Please log in to access your personal student information. What would you like to know about your program?\n\nBut the user asked \"why?\" - so we can say:\n\nI don't know why you think your results are worse than before without seeing your results. Please log in to check.\n\nBut that might be a bit negative. Alternatively, we can be more positive.\n\nGiven the constraints, I'll write:\n\nI'm sorry to hear you're feeling that way! I don't have access to your personal results without you logging in. Please log in to check your results. What would you like to know about your program?\n\nThis is 3 sentences and the user asked \"why?\" so we are addressing the concern.\n\nBut note: the instructions say \"Prefer a short answer with 3-5 bullets\". So we can do:\n\n- I'm sorry to hear you're feeling that way!\n- I don't have access to your personal results without logging in.\n- Please log in to check your results.\n- What would you like to know about your program?\n\nThat's 4 bullets.\n\nLet's write it in the same language (English) as the question.\n\nAlso, the instructions say: \"Use bold for key terms and program names\". So we can bold \"personal results\", \"logging in\", etc.\n\nBut note: the context doesn't have any program names that the user is asking about? The user is asking about their results. So we don't need to bold program names.\n\nWe'll do:\n\n- I'm sorry to hear you're feeling that way!\n- **I don't have access to your personal results** without logging in.\n- Please log in to check your results.\n- What would you like to know about your program?\n\nThis is 4 bullets.\n\nBut the user might be asking for a reason why their results are worse? We don't have that information. So we are not giving a reason.\n\nAlternatively, we can say:\n\nI don't have information about your specific results. Please log in to view them. What would you like to know about your program?\n\nBut the user asked \"why?\" so we are not answering that.\n\nGiven the above, I think the response is:\n\nI don't have access to your personal results without logging in. Please log in to check your results. What would you like to know about your program?\n\nBut to be more conversational and empathetic, we'll add a sentence.\n\nFinal response:\n\nI'm sorry to hear you're feeling that way! I don't have access to your personal results without logging in. Please log in to check your results. What would you like to know about your program?\n\nThis is 3 sentences, but we can break into 3-5 bullets? The instructions say \"prefer a short answer with 3-5 bullets\".\n\nLet's do:\n\n- I'm sorry to hear you're feeling that way!\n- **I don't have access to your personal results** without logging in.\n- Please log in to check your results.\n- What would you like to know about your program?\n\nThat's 4 bullets.\n\nWe'll go with that.\n\nNote: The user's question was \"why?\" but we are not answering \"why\" because we don't have the information. We are giving the next step.\n\nThis meets the instructions.\n\nLet's write the response accordingly.\n</think>\n\n- I'm sorry to hear you're feeling that way!  \n- **I don't have access to your personal results** without logging in.  \n- Please log in to check your results.  \n- What would you like to know about your program?"
+    },
+    {
+      "timestamp": "2026-06-27T10:15:20.478845",
+      "question": "hwy buddy, how are you",
+      "answer": "I'm doing well, buddy. How are you doing?"
+    },
+    {
+      "timestamp": "2026-06-27T10:18:32.755858",
+      "question": "not feeling good",
+      "answer": "- I'm sorry to hear you're not feeling good.  \n- I'm here to listen and help you through this.  \n- What would you like to talk about today?"
+    },
+    {
+      "timestamp": "2026-06-27T10:21:22.800209",
+      "question": "my academics are not going well at all",
+      "answer": "- I'm so sorry to hear your academics aren't going well \u2014 that's really tough.  \n- I don't have access to your results without you logging in, but I'm here to help you find practical ways to improve or manage stress.  \n- What would you like to focus on today? Maybe we can talk about your concerns or try a small step together."
     }
   ],
   "hdbfhybfd": [
@@ -323,6 +363,21 @@
       "timestamp": "2026-06-25T09:03:36.073939",
       "question": "what is my cggpa?",
       "answer": "- I don't have access to your personal records, so I cannot tell you your CGPA.  \n- You can check your CGPA through BUP's academic portal (admission.bup.edu.bd) or by contacting the Academic Counseling Office.  \n- If you're feeling overwhelmed, it's important to talk to your academic advisor or the BUP Academic Counseling team for personalized help.  \n- Are you an undergraduate or postgraduate student? This helps me guide you on the exact steps."
+    },
+    {
+      "timestamp": "2026-06-27T10:44:25.311461",
+      "question": "hey buddy, feeling stressed",
+      "answer": "\u0986\u09aa\u09a8\u09bf \u098f\u0996\u09a8 \u0995\u09bf \u0995\u09b0\u099b\u09c7\u09a8 \u09a4\u09be \u099c\u09be\u09a8\u09bf \u09a8\u09be, \u0995\u09bf\u09a8\u09cd\u09a4\u09c1 \u098f\u09ae\u09a8 \u0985\u09a8\u09c1\u09ad\u09c2\u09a4\u09bf \u09b9\u0993\u09af\u09bc\u09be \u0996\u09c1\u09ac \u09b8\u09be\u09a7\u09be\u09b0\u09a3\u0964 \u0986\u09aa\u09a8\u09be\u09b0 \u098f\u0987 \u0985\u09ac\u09b8\u09cd\u09a5\u09be\u09af\u09bc \u0995\u09cb\u09a8 \u0985\u0982\u09b6\u099f\u09bf \u09b8\u09ac\u099a\u09c7\u09af\u09bc\u09c7 \u0995\u09a0\u09bf\u09a8 \u09b2\u09be\u0997\u099b\u09c7?"
+    },
+    {
+      "timestamp": "2026-06-27T10:49:13.410741",
+      "question": "i am in mental pressure, academics, exams and personal relationship all are striking me hard",
+      "answer": "Feeling overwhelmed by academics, exams, and personal life? That's really tough. BUP's Academic Counseling team can help you create a manageable plan. Even small steps\u2014like focusing on one subject at a time\u2014can make a big difference. Reach out to them today for support."
+    },
+    {
+      "timestamp": "2026-06-27T10:52:58.390431",
+      "question": "thank you but, i think i should quit",
+      "answer": "It's really tough to feel like you might have to quit, and that's a heavy thought. What part of this situation is feeling the most overwhelming right now?"
     }
   ]
 }

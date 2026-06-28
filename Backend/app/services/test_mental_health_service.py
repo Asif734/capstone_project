@@ -38,6 +38,27 @@ class MentalHealthServiceTest(unittest.TestCase):
             f"Expected alert for suicidal text, got analysis={analysis}"
         )
 
+    def test_rule_scoring_flags_do_not_want_to_live_as_high_risk(self):
+        result = self.service.score_message("I don't want to live")
+
+        self.assertGreaterEqual(result["score"], 10)
+        self.assertTrue(result["high_hits"])
+
+    def test_fallback_alert_summary_is_one_line_and_informative(self):
+        interactions = [
+            {"question": "My academics are not going well and I feel stressed", "answer": ""}
+        ]
+        analysis = {
+            "risk_level": "moderate",
+            "recent_messages": [interactions[0]["question"]],
+        }
+
+        summary = self.service.fallback_alert_summary(interactions, analysis)
+
+        self.assertIn("moderate", summary)
+        self.assertIn("academics", summary)
+        self.assertNotIn("\n", summary)
+
 
 if __name__ == "__main__":
     unittest.main()

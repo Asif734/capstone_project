@@ -3,8 +3,11 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import os
 import joblib
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
 
 from app.services.memory_service import MemoryService
+from app.services.llm_service import get_llm
 from app.db.database import save_mental_health_alert, get_recent_mental_health_alerts
 from app.utils.authentication import send_admin_notification
 from app.core.config import settings
@@ -48,6 +51,8 @@ class MentalHealthService:
         self.high_risk_patterns = [
             r"\bkill myself\b",
             r"\bi want to die\b",
+            r"\bi don'?t want to live\b",
+            r"\bi do not want to live\b",
             r"\bend my life\b",
             r"\bno reason to live\b",
             r"\bworthless\b",
@@ -286,6 +291,47 @@ class MentalHealthService:
                 return True
             return analysis["score"] >= 12
 
+    def fallback_alert_summary(self, interactions: List[Dict], analysis: Dict[str, object]) -> str:
+        recent_messages = analysis.get("recent_messages") or [
+            interaction.get("question", "")
+            for interaction in interactions[-self.recent_interactions_limit:]
+            if interaction.get("question")
+        ]
+        latest_message = recent_messages[-1] if recent_messages else "No recent message available"
+        predicted_class = analysis.get("predicted_class") or analysis.get("risk_level") or "risk"
+        return f"{predicted_class}: {latest_message[:180]}"
+
+    def generate_alert_summary(self, interactions: List[Dict], analysis: Dict[str, object]) -> str:
+        recent_messages = analysis.get("recent_messages") or []
+        if not recent_messages:
+            return self.fallback_alert_summary(interactions, analysis)
+
+        prompt = PromptTemplate.from_template(
+            """Summarize the student's likely mental-health or academic concern for admin review.
+
+Rules:
+- Write exactly one short sentence.
+- Do not diagnose.
+- Mention the main problem signal and likely context.
+- Do not include advice.
+
+Recent student messages:
+{messages}
+
+One-line admin summary:"""
+        )
+
+        try:
+            response = (prompt | get_llm() | StrOutputParser()).invoke({
+                "messages": "\n".join(f"- {message}" for message in recent_messages[-6:]),
+            })
+            summary = " ".join(response.strip().split())
+            if summary.startswith("- "):
+                summary = summary[2:]
+            return summary[:240] or self.fallback_alert_summary(interactions, analysis)
+        except Exception:
+            return self.fallback_alert_summary(interactions, analysis)
+
     def has_recent_alert(self, user_id: int, db, hours: int = 24) -> bool:
         recent = get_recent_mental_health_alerts(user_id, db, hours=hours)
         return len(recent) > 0
@@ -318,6 +364,8 @@ class MentalHealthService:
         else:
             matched_phrases = ", ".join(analysis["high_hits"] + analysis["medium_hits"] + analysis["support_hits"])
 
+        summary = self.generate_alert_summary(interactions, analysis)
+
         alert = save_mental_health_alert(
             user_id=user_id_int,
             reg_id=reg_id,
@@ -328,6 +376,7 @@ class MentalHealthService:
             db=db,
             predicted_class=analysis.get("predicted_class") if self.use_ml else None,
             confidence=float(analysis.get("confidence", 0.0) or 0.0) if self.use_ml else None,
+            summary=summary,
         )
 
         self.notify_admin(alert)
@@ -339,6 +388,7 @@ class MentalHealthService:
             "score": alert.score,
             "predicted_class": alert.predicted_class,
             "confidence": alert.confidence,
+            "summary": alert.summary,
             "matched_phrases": alert.matched_phrases,
             "question_sample": alert.question_sample,
             "status": alert.status,
@@ -352,6 +402,7 @@ class MentalHealthService:
             f"Score: {alert.score}\n"
             f"Predicted class: {alert.predicted_class or 'N/A'}\n"
             f"Confidence: {alert.confidence if alert.confidence is not None else 'N/A'}\n"
+            f"Summary: {alert.summary or 'N/A'}\n"
             f"Detected phrases: {alert.matched_phrases}\n"
             f"Latest user message: {alert.question_sample}\n"
             f"Alert created at: {alert.created_at.isoformat()}\n"

@@ -35,6 +35,7 @@ def ensure_schema_migrations(db: Session):
     migrations = {
         "predicted_class": "ALTER TABLE mental_health_alerts ADD COLUMN predicted_class VARCHAR",
         "confidence": "ALTER TABLE mental_health_alerts ADD COLUMN confidence FLOAT",
+        "summary": "ALTER TABLE mental_health_alerts ADD COLUMN summary TEXT",
         "status": "ALTER TABLE mental_health_alerts ADD COLUMN status VARCHAR DEFAULT 'new'",
         "admin_notes": "ALTER TABLE mental_health_alerts ADD COLUMN admin_notes TEXT",
         "reviewed_at": "ALTER TABLE mental_health_alerts ADD COLUMN reviewed_at DATETIME",
@@ -308,6 +309,7 @@ def save_mental_health_alert(
     db: Session,
     predicted_class: str | None = None,
     confidence: float | None = None,
+    summary: str | None = None,
 ) -> MentalHealthAlert:
     """Persist a mental-health risk alert."""
     alert = MentalHealthAlert(
@@ -317,6 +319,7 @@ def save_mental_health_alert(
         score=score,
         predicted_class=predicted_class,
         confidence=confidence,
+        summary=summary,
         matched_phrases=matched_phrases,
         question_sample=question_sample,
         status="new",

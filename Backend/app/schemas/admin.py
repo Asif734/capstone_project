@@ -88,6 +88,7 @@ class MentalHealthAlertResponse(BaseModel):
     score: int
     predicted_class: Optional[str] = None
     confidence: Optional[float] = None
+    summary: Optional[str] = None
     matched_phrases: Optional[str] = None
     question_sample: Optional[str] = None
     status: str

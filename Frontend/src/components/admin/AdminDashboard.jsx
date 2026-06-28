@@ -589,7 +589,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div>{alert.predicted_class || 'Risk signal'}</div>
+                            <div>{alert.summary || alert.predicted_class || 'Risk signal'}</div>
                             <div className="text-xs text-purple-200/70">
                               Confidence {formatConfidence(alert.confidence)}
                             </div>
@@ -623,6 +623,13 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
                       {selectedAlert.student_name || selectedAlert.reg_id || 'Student'}
                     </h3>
                     <p className="text-sm text-purple-200">{selectedAlert.reg_id}</p>
+                  </div>
+
+                  <div className="rounded-lg bg-slate-900/50 p-3 text-sm text-slate-100">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-purple-200/70">
+                      One-line summary
+                    </p>
+                    <p>{selectedAlert.summary || 'No summary stored.'}</p>
                   </div>
 
                   <div className="rounded-lg bg-slate-900/50 p-3 text-sm text-slate-100">
@@ -861,6 +868,9 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
                               {alert.predicted_class || 'Risk signal'} - {formatDate(alert.created_at)}
                             </span>
                           </div>
+                          <p className="mt-2 text-sm font-medium text-slate-100">
+                            {alert.summary || 'No summary stored.'}
+                          </p>
                           <p className="mt-2 text-sm text-slate-100">
                             {alert.question_sample || 'No sample stored.'}
                           </p>

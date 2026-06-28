@@ -108,6 +108,7 @@ def serialize_alert(
         score=alert.score,
         predicted_class=alert.predicted_class,
         confidence=alert.confidence,
+        summary=alert.summary,
         matched_phrases=alert.matched_phrases,
         question_sample=alert.question_sample,
         status=alert.status or "new",
