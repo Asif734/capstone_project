@@ -20,4 +20,4 @@ htmlcov/
 dist/
 
 notebook_env/
-Backend/app/db/Combined Data.csv
+Backend/app/db/Combined Data.csvBackend/fine_tuned_distilbert
