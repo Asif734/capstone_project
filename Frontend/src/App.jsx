@@ -48,7 +48,7 @@
 
 // export default App;
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Header from './components/layout/Header';
 import ChatArea from './components/chat/ChatArea';
 import MessageInput from './components/chat/MessageInput';
@@ -63,6 +63,8 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [activeView, setActiveView] = useState('chat');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const isSendingRef = useRef(false);
   const { user, signIn, sendOTP, verifyOTP, signOut, error } = useAuth();
 
   const handleOpenAuth = (mode) => {
@@ -90,30 +92,39 @@ function App() {
     setActiveView('chat');
   };
 
-  const handleSendMessage = (message) => {
+  const handleSendMessage = async (message) => {
+    if (isSendingRef.current) {
+      return;
+    }
+
+    isSendingRef.current = true;
+    setIsSending(true);
+
     // Add user message
-    setMessages([...messages, { text: message, isUser: true }]);
-    
-    chatAPI.sendMessage(
-      { user_id: 'student_001', question: message, top_k: 3 },
-      user?.token || null
-    )
-    .then((data) => {
+    setMessages(prev => [...prev, { text: message, isUser: true }]);
+
+    try {
+      const data = await chatAPI.sendMessage(
+        { user_id: 'student_001', question: message, top_k: 3 },
+        user?.token || null
+      );
       setMessages(prev => [...prev, { 
         text: data.answer || 'No response', 
         isUser: false 
       }]);
-    })
-    .catch((error) => {
+    } catch (error) {
       console.error('Chat request failed:', error);
-      const message = error?.message
+      const errorMessage = error?.message
         ? `Unable to reach backend. ${error.message}`
         : 'Unable to reach backend. Check that it is running on http://localhost:8000';
       setMessages(prev => [...prev, { 
-        text: message,
+        text: errorMessage,
         isUser: false 
       }]);
-    });
+    } finally {
+      isSendingRef.current = false;
+      setIsSending(false);
+    }
   };
 
   return (
@@ -136,7 +147,7 @@ function App() {
       ) : (
         <>
           <ChatArea messages={messages} />
-          <MessageInput onSendMessage={handleSendMessage} />
+          <MessageInput onSendMessage={handleSendMessage} isSending={isSending} />
         </>
       )}
       <AuthModal 

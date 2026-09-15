@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 
-const MessageInput = ({ onSendMessage }) => {
+const MessageInput = ({ onSendMessage, isSending = false }) => {
   const [message, setMessage] = useState('');
 
   const handleSend = () => {
-    if (message.trim()) {
+    if (message.trim() && !isSending) {
       onSendMessage(message);
       setMessage('');
     }
@@ -34,7 +34,8 @@ const MessageInput = ({ onSendMessage }) => {
           </div>
           <button
             onClick={handleSend}
-            disabled={!message.trim()}
+            disabled={!message.trim() || isSending}
+            aria-busy={isSending}
             className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
