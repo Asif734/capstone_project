@@ -18,5 +18,9 @@ def get_llm():
         model=settings.OLLAMA_MODEL,
         base_url=settings.OLLAMA_BASE_URL,
         temperature=settings.LLM_TEMPERATURE,
+        reasoning=False,
+        num_ctx=settings.OLLAMA_NUM_CTX,
+        num_predict=settings.OLLAMA_NUM_PREDICT,
+        client_kwargs={"timeout": settings.OLLAMA_TIMEOUT_SECONDS},
     )
     return _llm

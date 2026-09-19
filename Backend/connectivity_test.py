@@ -34,4 +34,7 @@ if __name__ == '__main__':
     print('--- BACKEND ROOT ---')
     get('http://127.0.0.1:8000/')
     print('--- BACKEND QUERY ---')
-    post('http://127.0.0.1:8000/query', {'user_id':'student_001', 'question':'Hello backend', 'top_k':1})
+    post(
+        'http://127.0.0.1:8000/query',
+        {'user_id': 'connectivity-test-session', 'question': 'Hello backend', 'top_k': 1},
+    )

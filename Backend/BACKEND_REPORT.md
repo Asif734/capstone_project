@@ -1,5 +1,7 @@
 # Backend Technical Report
 
+> Historical architecture notes. For current setup, security controls, configuration, and verification commands, use the repository-level `README.md`.
+
 ## 1. Project Overview
 
 This backend is a FastAPI-based service for a secure, multilingual university assistant for Bangladesh University of Professionals (BUP). It is not only a simple chatbot backend. It combines a local LLM chatbot, retrieval-augmented generation (RAG), authenticated student record access, document ingestion, admin controls, and mental-health risk monitoring.
@@ -13,7 +15,7 @@ The backend is organized around these major responsibilities:
 - Allowing admins to manage authorized students and mental-health alerts
 - Uploading and indexing documents into Pinecone
 - Detecting mental-health risk signals from authenticated student conversations
-- Running the LLM locally through Ollama using `qwen3:4b`
+- Running the LLM locally through Ollama using `llama3.2:3b`
 
 Main backend entry point:
 
@@ -45,8 +47,8 @@ The FastAPI application is created in `app/main.py`. During startup, the lifespa
 2. Opens a database session.
 3. Applies lightweight schema migrations for existing SQLite databases.
 4. Initializes authorized users from local JSON data if needed.
-5. Populates private student records from `private.json`.
-6. Creates SQLAlchemy tables through `sqldb.Base.metadata.create_all`.
+5. Creates SQLAlchemy tables through `sqldb.Base.metadata.create_all`.
+6. In local development only, optionally seeds records from ignored JSON files.
 7. Registers the API routers:
    - Authentication routes
    - Admin routes
@@ -67,7 +69,7 @@ The backend is now configured as a local-LLM-first system:
 
 ```text
 LLM_PROVIDER=ollama
-OLLAMA_MODEL=qwen3:4b
+OLLAMA_MODEL=llama3.2:3b
 OLLAMA_BASE_URL=http://localhost:11434
 LLM_TEMPERATURE=0.3
 ```
@@ -81,7 +83,7 @@ app/services/llm_service.py
 This file exposes `get_llm()`, which returns a `ChatOllama` instance using the configured local Ollama model. The current model is:
 
 ```text
-qwen3:4b
+llama3.2:3b
 ```
 
 This design makes the LLM layer clean and isolated. The graph does not need to know the full model setup details; it simply calls `get_llm()`.
@@ -183,7 +185,7 @@ The RAG workflow has two nodes:
 retrieve -> generate
 ```
 
-The retrieve node gets relevant chunks from Pinecone. The generate node sends the retrieved context and the user question to the local Qwen model.
+The retrieve node gets relevant chunks from Pinecone. The generate node sends the retrieved context and the user question to the local Ollama model.
 
 ### Chat Agent
 
@@ -371,7 +373,7 @@ For public university questions:
 1. Router sends the query to the RAG route.
 2. Retriever fetches the most relevant document chunks.
 3. Chunks are formatted as context.
-4. Local Qwen model receives the context and question.
+4. Local Ollama model receives the context and question.
 5. The prompt instructs the model to answer only from the provided context.
 6. If the information is not present, it should say it does not have the information.
 
@@ -668,7 +670,7 @@ LangGraph Router
   +--> Chat Agent
   |      |
   |      v
-  |   Local Ollama LLM: qwen3:4b
+  |   Local Ollama LLM: llama3.2:3b
   |
   +--> RAG Agent
   |      |

@@ -1,0 +1,20 @@
+.env
+.env.*
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.git/
+.gitignore
+tests/
+student_db.db
+chat_memory.json
+app/db/private.json
+app/db/otp.json
+app/db/users.json
+app/db/Combined Data.csv
+notebook/
+fine_tuned_distilbert/

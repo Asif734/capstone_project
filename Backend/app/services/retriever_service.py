@@ -25,6 +25,6 @@ def get_vectorstore():
 
 def get_retriever(k: int = 3):
     return get_vectorstore().as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": k},
+        search_type="similarity_score_threshold",
+        search_kwargs={"k": k, "score_threshold": settings.RAG_SCORE_THRESHOLD},
     )

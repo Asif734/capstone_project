@@ -44,6 +44,29 @@ class MentalHealthServiceTest(unittest.TestCase):
         self.assertGreaterEqual(result["score"], 10)
         self.assertTrue(result["high_hits"])
 
+    def test_ambiguous_unwell_message_asks_for_clarification(self):
+        assessment = self.service.assess_message("I think I am not feeling well")
+
+        self.assertEqual(assessment["category"], "ambiguous_distress")
+        self.assertEqual(assessment["response_mode"], "clarify")
+        self.assertFalse(assessment["current_high_hits"])
+
+    def test_academic_uncertainty_is_not_treated_as_a_crisis(self):
+        assessment = self.service.assess_message(
+            "I think I should not join the master's course"
+        )
+
+        self.assertNotEqual(assessment["response_mode"], "crisis")
+        self.assertFalse(assessment["current_high_hits"])
+
+    def test_bangla_crisis_language_is_detected(self):
+        assessment = self.service.assess_message("আমি বাঁচতে চাই না")
+        self.assertEqual(assessment["response_mode"], "crisis")
+
+    def test_banglish_ambiguous_distress_is_clarified(self):
+        assessment = self.service.assess_message("amar bhalo lagche na")
+        self.assertEqual(assessment["response_mode"], "clarify")
+
     def test_fallback_alert_summary_is_one_line_and_informative(self):
         interactions = [
             {"question": "My academics are not going well and I feel stressed", "answer": ""}

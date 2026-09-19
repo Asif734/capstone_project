@@ -1,9 +1,12 @@
 import hashlib
 import json
+import logging
 import math
 from typing import Any
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class RedisSemanticCacheService:
@@ -25,10 +28,13 @@ class RedisSemanticCacheService:
     ):
         self.enabled = settings.REDIS_CACHE_ENABLED
         self.ttl = ttl or settings.REDIS_CACHE_TTL_SECONDS
-        self.threshold = threshold or settings.REDIS_CACHE_SIMILARITY_THRESHOLD
-        self.max_candidates = max_candidates or settings.REDIS_CACHE_MAX_CANDIDATES
-        self.index_key = "qa_cache:index"
-        self.key_prefix = "qa_cache:item:"
+        self.threshold = threshold if threshold is not None else settings.REDIS_CACHE_SIMILARITY_THRESHOLD
+        self.max_candidates = max_candidates if max_candidates is not None else settings.REDIS_CACHE_MAX_CANDIDATES
+        namespace = hashlib.sha256(
+            f"{settings.INDEX_NAME}:{settings.EMBEDDING_MODEL}".encode("utf-8")
+        ).hexdigest()[:12]
+        self.index_key = f"qa_cache:{namespace}:index"
+        self.key_prefix = f"qa_cache:{namespace}:item:"
         self.redis_client = None
 
         if not self.enabled:
@@ -47,7 +53,7 @@ class RedisSemanticCacheService:
             )
             self.redis_client.ping()
         except Exception as exc:
-            print(f"[RedisSemanticCache] Disabled: {exc}")
+            logger.info("Redis semantic cache disabled: %s", exc)
             self.enabled = False
             self.redis_client = None
 
@@ -83,6 +89,17 @@ class RedisSemanticCacheService:
             return None
 
         try:
+            exact_id = self._cache_id(question)
+            exact = self.redis_client.get(f"{self.key_prefix}{exact_id}")
+            if exact:
+                item = json.loads(exact)
+                return {
+                    "answer": item["answer"],
+                    "matched_question": item["question"],
+                    "similarity": 1.0,
+                    "sources": item.get("sources", []),
+                }
+
             query_embedding = self._embedding(question)
             item_ids = list(self.redis_client.smembers(self.index_key))[: self.max_candidates]
             best_match = None
@@ -108,7 +125,7 @@ class RedisSemanticCacheService:
                     "sources": best_match.get("sources", []),
                 }
         except Exception as exc:
-            print(f"[RedisSemanticCache] Read failed: {exc}")
+            logger.warning("Redis semantic cache read failed: %s", exc)
 
         return None
 
@@ -136,8 +153,12 @@ class RedisSemanticCacheService:
             self.redis_client.sadd(self.index_key, item_id)
             self.redis_client.expire(self.index_key, self.ttl)
         except Exception as exc:
-            print(f"[RedisSemanticCache] Write failed: {exc}")
+            logger.warning("Redis semantic cache write failed: %s", exc)
 
     def clear_cache(self) -> None:
         if self.is_available():
+            item_ids = self.redis_client.smembers(self.index_key)
+            keys = [f"{self.key_prefix}{item_id}" for item_id in item_ids]
+            if keys:
+                self.redis_client.delete(*keys)
             self.redis_client.delete(self.index_key)

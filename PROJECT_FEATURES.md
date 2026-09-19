@@ -19,7 +19,7 @@ The chatbot is not only a generic assistant. It is connected to university docum
 The backend uses a locally hosted Ollama model:
 
 ```text
-qwen3:4b
+llama3.2:3b
 ```
 
 This improves privacy because user messages do not need to be sent to a third-party cloud LLM provider.

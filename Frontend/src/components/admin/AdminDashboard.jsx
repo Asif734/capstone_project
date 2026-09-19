@@ -126,6 +126,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       setAlerts(sortAlerts(alertData));
       setStudents(studentData);
       setActiveToken(token);
+      setAdminPassword('');
       setIsAuthorized(true);
       if (onAdminAuth) onAdminAuth();
     } catch (err) {

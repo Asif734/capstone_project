@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -11,6 +12,9 @@ from app.services.llm_service import get_llm
 from app.db.database import save_mental_health_alert, get_recent_mental_health_alerts
 from app.utils.authentication import send_admin_notification
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class MentalHealthService:
@@ -31,9 +35,9 @@ class MentalHealthService:
             self._repair_vectorizer_compatibility()
             self.label_encoder = joblib.load(os.path.join(model_dir, 'label_encoder.pkl'))
             self.use_ml = True
-            print("ML model loaded successfully for mental health detection.")
-        except FileNotFoundError:
-            print("ML model files not found, falling back to rule-based detection.")
+            logger.info("Mental-health classification model loaded")
+        except (FileNotFoundError, OSError, ValueError, TypeError, AttributeError, ImportError) as exc:
+            logger.warning("Mental-health model unavailable; using rules: %s", exc)
             self.use_ml = False
 
     def _repair_vectorizer_compatibility(self) -> None:
@@ -55,19 +59,20 @@ class MentalHealthService:
             r"\bi do not want to live\b",
             r"\bend my life\b",
             r"\bno reason to live\b",
-            r"\bworthless\b",
             r"\bnot worth living\b",
             r"\bcut myself\b",
             r"\bself harm\b",
             r"\bsuicid(e|al)\b",
             r"\bcan't go on\b",
-            r"\bi'm done\b",
             r"\bscared of living\b",
-            r"\bi can't continue\b",
-            r"\bi cannot continue\b",
-            r"\bi should quit\b",
-            r"\bwant to quit\b",
-            r"\bno,? ami sekhane jete chai na\b",
+            r"\bmore jete chai\b",
+            r"\bbachte chai na\b",
+            r"\bnijeke mere felbo\b",
+            r"\bsuicide korte chai\b",
+            r"আত্মহত্যা",
+            r"মরতে চাই",
+            r"বাঁচতে চাই না",
+            r"নিজেকে মেরে",
         ]
 
         self.medium_risk_patterns = [
@@ -87,6 +92,18 @@ class MentalHealthService:
             r"\bnot good enough\b",
             r"\bfeeling low\b",
             r"\bfeel low\b",
+            r"\bi(?:'m| am) done\b",
+            r"\bi (?:can't|cannot) continue\b",
+            r"\bi should quit\b",
+            r"\bwant to quit\b",
+            r"\bkhub chap\b",
+            r"\bhotash\b",
+            r"\budbigno\b",
+            r"\beka lagche\b",
+            r"হতাশ",
+            r"উদ্বিগ্ন",
+            r"খুব চাপ",
+            r"একা লাগছে",
         ]
 
         self.support_seeking_patterns = [
@@ -98,6 +115,16 @@ class MentalHealthService:
             r"\bnot coping\b",
             r"\bneed support\b",
             r"\blike i can't\b",
+        ]
+        self.ambiguous_distress_patterns = [
+            r"\bnot feeling (?:well|okay|ok|myself)\b",
+            r"\bdon'?t feel (?:well|okay|ok|like myself)\b",
+            r"\bfeeling unwell\b",
+            r"\bi(?:'m| am) struggling\b",
+            r"\bvalo lagche na\b",
+            r"\bbhalo lagche na\b",
+            r"ভালো লাগছে না",
+            r"শরীর ভালো না",
         ]
 
     def normalize_text(self, text: str) -> str:
@@ -160,13 +187,28 @@ class MentalHealthService:
         # Combine messages and preprocess
         combined_text = " ".join(recent_messages)
         cleaned_text = self._preprocess_text(combined_text)
+        if not cleaned_text:
+            rule_analysis.update({
+                "risk_level": "normal",
+                "predicted_class": "none",
+                "confidence": 0.0,
+                "rule_score": rule_analysis["score"],
+            })
+            return rule_analysis
 
         # Vectorize and predict
         X = self.vectorizer.transform([cleaned_text])
-        probabilities = self.model.predict_proba(X)[0]
-        predicted_class_idx = self.model.predict(X)[0]
+        if hasattr(self.model, "booster_"):
+            probabilities = self.model.booster_.predict(X)[0]
+            predicted_position = max(range(len(probabilities)), key=probabilities.__getitem__)
+            predicted_class_idx = self.model.classes_[predicted_position]
+        else:
+            probabilities = self.model.predict_proba(X)[0]
+            predicted_class_idx = self.model.predict(X)[0]
         predicted_class = self.label_encoder.inverse_transform([predicted_class_idx])[0]
-        confidence = probabilities[predicted_class_idx]
+        model_classes = list(self.model.classes_)
+        probability_index = model_classes.index(predicted_class_idx)
+        confidence = float(probabilities[probability_index])
 
         # Map to risk levels
         risk_mapping = {
@@ -175,17 +217,29 @@ class MentalHealthService:
             'Stress': 'moderate',
             'Depression': 'high',
             'Suicidal': 'high',
-            'Bipolar': 'high',
-            'Personality disorder': 'high'
+            'Bipolar': 'moderate',
+            'Personality disorder': 'moderate'
+        }
+
+        signal_mapping = {
+            "Normal": "none",
+            "Anxiety": "emotional_distress",
+            "Stress": "emotional_distress",
+            "Depression": "emotional_distress",
+            "Suicidal": "safety_risk",
+            "Bipolar": "general_distress",
+            "Personality disorder": "general_distress",
         }
 
         risk_level = risk_mapping.get(predicted_class, 'moderate')
-        score = int(confidence * 100)  # Convert to 0-100 scale
+        ml_risk_score = 0 if risk_level == "normal" else round(confidence * 100)
+        rule_risk_score = min(int(rule_analysis["score"]) * 5, 100)
+        score = max(ml_risk_score, rule_risk_score)
 
         return {
             "score": score,
             "risk_level": risk_level,
-            "predicted_class": predicted_class,
+            "predicted_class": signal_mapping.get(predicted_class, "general_distress"),
             "confidence": confidence,
             "recent_messages": recent_messages,
             "rule_score": rule_analysis["score"],
@@ -193,6 +247,46 @@ class MentalHealthService:
             "medium_hits": rule_analysis["medium_hits"],
             "support_hits": rule_analysis["support_hits"],
         }
+
+    def assess_message(
+        self,
+        message: str,
+        conversation_history: Optional[List[Dict]] = None,
+    ) -> Dict[str, object]:
+        """Build the shared assessment used for response routing and alerts."""
+        history = list((conversation_history or [])[-(self.recent_interactions_limit - 1):])
+        interactions = [*history, {"question": message, "answer": ""}]
+        analysis = self.analyze_history(interactions)
+        current_rules = self.score_message(message)
+        normalized = self.normalize_text(message)
+
+        if current_rules["high_hits"]:
+            response_mode = "crisis"
+            category = "immediate_safety_concern"
+        elif any(re.search(pattern, normalized) for pattern in self.ambiguous_distress_patterns):
+            response_mode = "clarify"
+            category = "ambiguous_distress"
+        elif current_rules["medium_hits"] or current_rules["support_hits"]:
+            response_mode = "support"
+            category = "emotional_distress"
+        elif (
+            analysis.get("risk_level") in {"moderate", "high"}
+            and float(analysis.get("confidence", 0.0) or 0.0) >= settings.MENTAL_HEALTH_ML_THRESHOLD
+        ):
+            response_mode = "support"
+            category = "model_detected_distress"
+        else:
+            response_mode = "normal"
+            category = "none"
+
+        analysis.update({
+            "category": category,
+            "response_mode": response_mode,
+            "current_high_hits": current_rules["high_hits"],
+            "current_medium_hits": current_rules["medium_hits"],
+            "current_support_hits": current_rules["support_hits"],
+        })
+        return analysis
 
     def _preprocess_text(self, text: str) -> str:
         """Preprocess text similar to training."""
@@ -261,7 +355,7 @@ class MentalHealthService:
                 return "critical"
             if int(analysis.get("rule_score", 0) or 0) >= 18:
                 return "high"
-            if predicted_class == "Suicidal" and confidence >= 0.7:
+            if predicted_class == "safety_risk" and confidence >= settings.MENTAL_HEALTH_ML_THRESHOLD:
                 return "critical"
             if risk_level == "high" and confidence >= 0.9:
                 return "critical"
@@ -278,6 +372,8 @@ class MentalHealthService:
             return "low"
 
     def should_alert(self, analysis: Dict[str, object]) -> bool:
+        if analysis.get("category") == "ambiguous_distress" and not analysis.get("high_hits"):
+            return False
         if self.use_ml:
             if analysis.get("high_hits"):
                 return True
@@ -285,7 +381,10 @@ class MentalHealthService:
                 return True
             risk_level = analysis.get("risk_level", "normal")
             confidence = analysis.get("confidence", 0.0)
-            return risk_level in ["high", "moderate"] and confidence > 0.7
+            return (
+                risk_level in ["high", "moderate"]
+                and confidence >= settings.MENTAL_HEALTH_ML_THRESHOLD
+            )
         else:
             if analysis["high_hits"]:
                 return True
@@ -336,7 +435,13 @@ One-line admin summary:"""
         recent = get_recent_mental_health_alerts(user_id, db, hours=hours)
         return len(recent) > 0
 
-    def evaluate_user_risk(self, user_id: str, reg_id: Optional[str], db) -> Optional[Dict[str, object]]:
+    def evaluate_user_risk(
+        self,
+        user_id: str,
+        reg_id: Optional[str],
+        db,
+        analysis: Optional[Dict[str, object]] = None,
+    ) -> Optional[Dict[str, object]]:
         try:
             user_id_int = int(user_id)
         except (TypeError, ValueError):
@@ -346,7 +451,7 @@ One-line admin summary:"""
         if not interactions:
             return None
 
-        analysis = self.analyze_history(interactions)
+        analysis = analysis or self.analyze_history(interactions)
         if not self.should_alert(analysis):
             return None
 

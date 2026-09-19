@@ -1,0 +1,13 @@
+{
+  "EXAMPLE001": {
+    "name": "Example Student",
+    "year": 1,
+    "semester": 1,
+    "department": "Example Department",
+    "status": "active",
+    "courses": ["Example Course"],
+    "marks": {"Example Course": 0},
+    "cgpa": {"sem1": 0.0},
+    "pending_fees": 0
+  }
+}

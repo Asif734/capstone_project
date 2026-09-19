@@ -1,46 +1,81 @@
-from fastapi import FastAPI,APIRouter, UploadFile, File, Form
-from fastapi.responses import JSONResponse
-from app.utils.preprocess_text import extract_text, clean_text, chunk_text
+import logging
+import re
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from starlette.concurrency import run_in_threadpool
+
+from app.core.config import settings
+from app.routes.admin import require_admin
 from app.services.embedding import get_embedding
 from app.services.pinecone import store_embeddings
-import uuid
+from app.utils.preprocess_text import chunk_text, clean_text, extract_text
 
-router= APIRouter()
+router = APIRouter()
+logger = logging.getLogger(__name__)
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+DOC_ID_PATTERN = re.compile(r"[^a-zA-Z0-9._-]+")
 
-@router.post("/Upload")
+
+def normalize_doc_id(value: str | None) -> str:
+    if not value:
+        return str(uuid.uuid4())
+    normalized = DOC_ID_PATTERN.sub("-", value.strip()).strip("-._")
+    if not normalized:
+        raise HTTPException(status_code=422, detail="Document name is invalid")
+    return normalized[:128]
+
+
+def ingest_document(file_bytes: bytes, filename: str, doc_id: str) -> int:
+    text = extract_text(file_bytes, filename, max_pages=settings.MAX_DOCUMENT_PAGES)
+    cleaned_text = clean_text(text)
+    if not cleaned_text:
+        raise ValueError("The document contains no extractable text")
+    chunks = chunk_text(cleaned_text)
+    embeddings = get_embedding(chunks)
+    return store_embeddings(
+        chunks=chunks,
+        embeddings=embeddings,
+        doc_id=doc_id,
+        source_name=filename,
+    )
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post("/Upload", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def upload_file(
-    file: UploadFile= File(...),
-    doc_name: str = Form(None)
-    ):
-    try:
-        if doc_name:
-            doc_id = doc_name
-        else:
-            doc_id= str(uuid.uuid4())
+    file: UploadFile = File(...),
+    doc_name: str | None = Form(default=None),
+    _: None = Depends(require_admin),
+):
+    filename = Path(file.filename or "").name
+    extension = Path(filename).suffix.lower()
+    if not filename or extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=415, detail="Only PDF, DOCX, and TXT files are supported")
 
-        file_bytes= await file.read()
-        text= extract_text(file_bytes, file.filename)
-        filename= file.filename
-
-        cleaned_text= clean_text(text)
-
-        chunked_text= chunk_text(cleaned_text)
-
-        embeddings= get_embedding(chunked_text)
-
-        chunk_stored = store_embeddings(
-            chunks= chunked_text,
-            embeddings= embeddings,
-            doc_id= doc_id
+    file_bytes = await file.read(settings.MAX_UPLOAD_BYTES + 1)
+    await file.close()
+    if len(file_bytes) > settings.MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds the {settings.MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit",
         )
 
-        return{
-            "filename" : filename,
-            "chunk_stored": len(chunked_text),
-            "message": "Document uploaded and stored successfully"
-        }
+    doc_id = normalize_doc_id(doc_name)
+    try:
+        stored_count = await run_in_threadpool(
+            ingest_document, file_bytes, filename, doc_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Document ingestion failed for %s", filename)
+        raise HTTPException(status_code=502, detail="Document ingestion failed") from exc
 
-        
-    
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code= 400)
+    return {
+        "filename": filename,
+        "document_id": doc_id,
+        "chunks_stored": stored_count,
+        "message": "Document uploaded and indexed successfully",
+    }

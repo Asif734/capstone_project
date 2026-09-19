@@ -57,6 +57,14 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import { chatAPI } from './services/api';
 import { useAuth } from './hooks/useAuth';
 
+function getConversationId() {
+  const storedId = sessionStorage.getItem('conversationId');
+  if (storedId) return storedId;
+  const newId = crypto.randomUUID();
+  sessionStorage.setItem('conversationId', newId);
+  return newId;
+}
+
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
@@ -65,10 +73,10 @@ function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const isSendingRef = useRef(false);
+  const [conversationId] = useState(getConversationId);
   const { user, signIn, sendOTP, verifyOTP, signOut, error } = useAuth();
 
   const handleOpenAuth = (mode) => {
-    console.log('Opening auth with mode:', mode); // Debug log
     setAuthMode(mode);
     setShowAuthModal(true);
   };
@@ -105,12 +113,13 @@ function App() {
 
     try {
       const data = await chatAPI.sendMessage(
-        { user_id: 'student_001', question: message, top_k: 3 },
+        { user_id: conversationId, question: message, top_k: 3 },
         user?.token || null
       );
       setMessages(prev => [...prev, { 
         text: data.answer || 'No response', 
-        isUser: false 
+        isUser: false,
+        sources: data.sources || [],
       }]);
     } catch (error) {
       console.error('Chat request failed:', error);

@@ -1,6 +1,7 @@
 import hmac
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
+import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -49,12 +50,20 @@ STATUS_PRIORITY = {
 def require_admin(
     admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
-    expected = settings.ADMIN_DASHBOARD_TOKEN
-    if not admin_token or not expected or not hmac.compare_digest(admin_token, expected):
+    if not admin_token or not settings.JWT_SECRET_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin token",
         )
+    try:
+        payload = jwt.decode(admin_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+    except jwt.PyJWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired admin token",
+        ) from exc
+    if payload.get("type") != "admin" or payload.get("email") != settings.ADMIN_EMAIL:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
 @router.post("/login", response_model=AdminLoginResponse, status_code=status.HTTP_200_OK)
@@ -77,10 +86,18 @@ def admin_login(data: AdminLoginRequest):
             detail="Invalid admin credentials",
         )
 
-    return AdminLoginResponse(
-        access_token=settings.ADMIN_DASHBOARD_TOKEN,
-        token_type="bearer",
+    now = datetime.now(timezone.utc)
+    access_token = jwt.encode(
+        {
+            "type": "admin",
+            "email": settings.ADMIN_EMAIL,
+            "iat": now,
+            "exp": now + timedelta(minutes=settings.ADMIN_TOKEN_EXPIRE_MINUTES),
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm="HS256",
     )
+    return AdminLoginResponse(access_token=access_token, token_type="bearer")
 
 
 def sort_alerts(alerts: list[MentalHealthAlert]) -> list[MentalHealthAlert]:

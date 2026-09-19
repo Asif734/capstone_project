@@ -88,16 +88,21 @@
 
 // API Base URL - FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 45000);
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = localStorage.getItem('authToken');
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const hasJsonBody = options.body && !(options.body instanceof FormData);
 
   const config = {
     ...options,
+    signal: controller.signal,
     headers: {
-      'Content-Type': 'application/json',
+      ...(hasJsonBody && { 'Content-Type': 'application/json' }),
       ...(token && { 'X-User-Token': token }),
       ...options.headers,
     },
@@ -105,7 +110,15 @@ const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
-    const data = await response.json();
+    const responseText = await response.text();
+    let data = {};
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { detail: responseText };
+      }
+    }
 
     if (!response.ok) {
       throw new Error(data.detail || data.message || 'API request failed');
@@ -113,8 +126,12 @@ const apiCall = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error('API Error:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('The server took too long to respond. Please try again.');
+    }
     throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 };
 
@@ -145,6 +162,8 @@ export const authAPI = {
       body: JSON.stringify(credentials),
     });
   },
+
+  getCurrentUser: async () => apiCall('/me', { method: 'GET' }),
 };
 
 // ==============================

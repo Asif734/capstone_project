@@ -8,10 +8,27 @@ export const useAuth = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    if (token) {
-      setUser({ token });
+    if (!token) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    let active = true;
+    authAPI.getCurrentUser()
+      .then((profile) => {
+        if (active) setUser({ token, profile });
+      })
+      .catch(() => {
+        localStorage.removeItem('authToken');
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const signIn = async (credentials) => {
@@ -23,9 +40,12 @@ export const useAuth = () => {
         throw new Error('Missing access token');
       }
       localStorage.setItem('authToken', token);
-      setUser({ token });
+      const profile = await authAPI.getCurrentUser();
+      setUser({ token, profile });
       return { success: true };
     } catch (err) {
+      localStorage.removeItem('authToken');
+      setUser(null);
       setError(err.message);
       return { success: false, error: err.message };
     }

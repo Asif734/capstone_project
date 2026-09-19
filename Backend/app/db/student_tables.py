@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.db.sqldb import Base, engine
+from app.db.sqldb import Base
 
 
 class AuthorizedUser(Base):
@@ -199,4 +199,12 @@ class MentalHealthAlert(Base):
     user = relationship("User")
 
 
-Base.metadata.create_all(bind=engine)
+class ChatInteraction(Base):
+    """Durable per-conversation memory for deployed environments."""
+    __tablename__ = "chat_interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_key = Column(String(128), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)

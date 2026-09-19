@@ -2,6 +2,16 @@ import React from 'react';
 import { Bot } from 'lucide-react';
 
 const ChatArea = ({ messages = [] }) => {
+  const uniqueSources = (sources = []) => {
+    const seen = new Set();
+    return sources.filter((source) => {
+      const key = `${source.doc_id}:${source.chunk_index}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   // Simple markdown renderer for common formatting
   const renderMarkdown = (text) => {
     if (!text) return '';
@@ -75,6 +85,20 @@ const ChatArea = ({ messages = [] }) => {
                     : 'bg-slate-700 text-white'
                 }`}>
                   {msg.isUser ? msg.text : renderMarkdown(msg.text)}
+                  {!msg.isUser && uniqueSources(msg.sources).length > 0 && (
+                    <details className="mt-3 border-t border-slate-500/40 pt-2 text-sm text-slate-300">
+                      <summary className="cursor-pointer select-none font-medium text-purple-200">
+                        Sources ({uniqueSources(msg.sources).length})
+                      </summary>
+                      <ul className="mt-2 space-y-1">
+                        {uniqueSources(msg.sources).map((source) => (
+                          <li key={`${source.doc_id}:${source.chunk_index}`}>
+                            {source.source_name || source.doc_id} · chunk {source.chunk_index}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
               </div>
             ))}

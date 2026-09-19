@@ -1,8 +1,11 @@
 # utils/authentication.py
-import random
-import string
 import hashlib
 import hmac
+import logging
+import secrets
+import smtplib
+import string
+from email.message import EmailMessage
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -12,15 +15,14 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 # ========== PASSWORD HASHING ==========
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
     bcrypt__rounds=12  # Increase rounds for stronger hashing
 )
-
-
-import hashlib
 
 def hash_password(password: str) -> str:
     # Normalize password length safely
@@ -36,15 +38,38 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ========== OTP GENERATION ==========
 def generate_otp(length: int = 6) -> str:
     """Generate a secure 6-digit OTP"""
-    return ''.join(random.choices(string.digits, k=length))
+    return ''.join(secrets.choice(string.digits) for _ in range(length))
+
+
+def hash_otp(otp: str) -> str:
+    """Hash a short-lived OTP before storing it."""
+    if not SECRET_KEY:
+        raise RuntimeError("JWT secret not configured")
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        otp.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def verify_otp_value(candidate: str, stored_value: str) -> bool:
+    """Verify a hashed OTP, while allowing existing plaintext records."""
+    expected = hash_otp(candidate)
+    return hmac.compare_digest(expected, stored_value) or hmac.compare_digest(candidate, stored_value)
 
 
 def send_otp_email(receiver_email: str, otp: str):
-    """Send OTP via email (currently simulated)"""
+    """Send OTP via configured SMTP, or log it during local development."""
     if settings.REQUIRE_EMAIL_DELIVERY:
-        raise RuntimeError("Email delivery is required but no email provider is configured")
+        _send_email(
+            receiver_email,
+            "BUP Student Portal - Email Verification",
+            f"Your one-time verification code is {otp}. It expires in 10 minutes.",
+        )
+        return
 
-    print(f"[DEBUG] OTP sent to {receiver_email}: {otp}")
+    if settings.APP_ENV == "development":
+        logger.warning("Development OTP for %s: %s", receiver_email, otp)
     
     # Production: Connect to email service (SendGrid, AWS SES, etc.)
     # Example:
@@ -69,11 +94,14 @@ def send_otp_email(receiver_email: str, otp: str):
 def send_admin_notification(email: str, subject: str, message: str):
     """Notify the admin about risk detection events."""
     if not email:
-        print("[ALERT] No admin email configured. Notification skipped.")
+        logger.error("No admin email configured; notification skipped")
         return
 
-    # Production: Replace this log-based notification with a real mail service.
-    print(f"[ADMIN ALERT] To: {email}\nSubject: {subject}\n{message}")
+    if settings.REQUIRE_EMAIL_DELIVERY:
+        _send_email(email, subject, message)
+        return
+
+    logger.warning("Admin alert for %s (%s): %s", email, subject, message)
 
     # Example production implementation:
     # from sendgrid import SendGridAPIClient
@@ -89,6 +117,24 @@ def send_admin_notification(email: str, subject: str, message: str):
     #     sg.send(mail)
     # except Exception as e:
     #     print(f"Admin notification failed: {e}")
+
+
+def _send_email(receiver_email: str, subject: str, body: str) -> None:
+    if not settings.SMTP_HOST or not settings.SMTP_FROM_EMAIL:
+        raise RuntimeError("SMTP_HOST and SMTP_FROM_EMAIL must be configured")
+
+    email = EmailMessage()
+    email["From"] = settings.SMTP_FROM_EMAIL
+    email["To"] = receiver_email
+    email["Subject"] = subject
+    email.set_content(body)
+
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as client:
+        if settings.SMTP_USE_TLS:
+            client.starttls()
+        if settings.SMTP_USERNAME:
+            client.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD or "")
+        client.send_message(email)
 
 
 # ========== JWT TOKEN MANAGEMENT ==========
@@ -219,6 +265,3 @@ def get_token_expiry_from_payload(payload: Dict) -> Optional[datetime]:
 def generate_secure_token() -> str:
     """Generate a random secure token"""
     return secrets.token_urlsafe(32)
-
-
-import secrets

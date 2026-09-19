@@ -20,4 +20,11 @@ htmlcov/
 dist/
 
 notebook_env/
-Backend/app/db/Combined Data.csvBackend/fine_tuned_distilbert
+app/db/Combined Data.csv
+fine_tuned_distilbert/
+student_db.db
+chat_memory.json
+app/db/private.json
+app/db/students.json
+app/db/otp.json
+app/db/users.json

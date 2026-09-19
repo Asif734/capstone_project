@@ -1,57 +1,17 @@
-# from pinecone import Pinecone, ServerlessSpec
-# import uuid
-# api_key="pcsk_5MgxE2_SvtRBE7ARYHwcVd5S5ucZEucguxrL86BCdEovgadhSFoHqDE3CmKVP5nVNRW4cm" 
-
-# pc= Pinecone(api_key=api_key)
-# index_name= "multilingual-text"
-
-# if index_name not in pc.list_indexes().names():
-#     pc.create_index(
-#         index_name, 
-#         dimension= 384,
-#         metric='cosine',
-#         spec= ServerlessSpec(cloud="aws", region= "us-east-1")
-#         )
-
-# index= pc.Index(index_name)
-
-# def store_embeddings(chunks, embeddings,doc_id= None, max_metadata_length=3000):
-#     """
-#     Stores text chunks and their embeddings safely in Pinecone,
-#     ensuring metadata never exceeds 40 KB per vector.
-#     """
-#     if not doc_id:
-#         doc_id = str (uuid.uuid4())
-    
-#     vectors =[]
-#     for i, (chunk, emb) in enumerate(zip(chunks, embeddings)):
-#         safe_text = chunk[:max_metadata_length]
-#         vector_id = f"{doc_id}_chunk_{i}"
-#         vectors.append((
-#             vector_id,
-#             emb.tolist(),
-#             {
-#                 "text": safe_text,
-#                 "doc_id": doc_id,
-#                 "chunk_index":i
-#             }
-#         ))
-
-#     index.upsert(vectors= vectors)
-#     print(f"Stored {len(vectors)} vectors safely in Pinecone")
-#     return len(vectors)
-
-
-
+import logging
 import uuid
+from datetime import datetime, timezone
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 _pc = None
 _index = None
 
 def _get_client():
     global _pc
     if _pc is None:
+        if not settings.PINECONE_API_KEY:
+            raise RuntimeError("PINECONE_API_KEY is not configured")
         try:
             from pinecone import Pinecone
         except ImportError as exc:
@@ -72,33 +32,55 @@ def get_index():
 
         pc.create_index(
             index_name,
-            dimension=384,
+            dimension=settings.PINECONE_DIMENSION,
             metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+            spec=ServerlessSpec(
+                cloud=settings.PINECONE_CLOUD,
+                region=settings.PINECONE_REGION,
+            ),
         )
 
     _index = pc.Index(index_name)
     return _index
 
-def store_embeddings(chunks, embeddings, doc_id=None, max_metadata_length=3000):
+def store_embeddings(
+    chunks,
+    embeddings,
+    doc_id=None,
+    source_name=None,
+    max_metadata_length=3000,
+):
+    if len(chunks) != len(embeddings):
+        raise ValueError("Chunk and embedding counts do not match")
+    if not chunks:
+        raise ValueError("No document chunks were generated")
     if not doc_id:
         doc_id = str(uuid.uuid4())
 
     index = get_index()
     vectors = []
     for i, (chunk, emb) in enumerate(zip(chunks, embeddings)):
+        values = emb.tolist()
+        if len(values) != settings.PINECONE_DIMENSION:
+            raise ValueError(
+                f"Embedding dimension {len(values)} does not match configured dimension "
+                f"{settings.PINECONE_DIMENSION}"
+            )
         safe_text = chunk[:max_metadata_length]
         vectors.append({
             "id": f"{doc_id}_chunk_{i}",
-            "values": emb.tolist(),
+            "values": values,
             "metadata": {
                 "text": safe_text,
                 "doc_id": doc_id,
-                "chunk_index": i
+                "chunk_index": i,
+                "source_name": source_name or doc_id,
+                "ingested_at": datetime.now(timezone.utc).isoformat(),
             }
         })
 
-    # ✅ Correct upsert call for Pinecone v3
-    index.upsert(vectors=vectors)
-    print(f"✅ Stored {len(vectors)} vectors safely in Pinecone")
+    batch_size = settings.PINECONE_UPSERT_BATCH_SIZE
+    for start in range(0, len(vectors), batch_size):
+        index.upsert(vectors=vectors[start:start + batch_size])
+    logger.info("Stored %s vectors in Pinecone for %s", len(vectors), doc_id)
     return len(vectors)

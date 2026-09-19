@@ -1,6 +1,6 @@
-import os
+import logging
 from datetime import timedelta
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, Header, status, Request
 from sqlalchemy.orm import Session
 
 from app.schemas.authentication import (
@@ -16,6 +16,10 @@ from app.utils.authentication import (
     create_access_token,
     verify_password,
     hash_password,
+    hash_otp,
+    hash_token,
+    get_token_payload,
+    verify_otp_value,
     validate_password_strength,
 )
 from app.db.database import (
@@ -38,9 +42,11 @@ from app.db.database import (
     create_session,
     record_login_attempt,
     get_otp_email,
+    get_session_by_token_hash,
 )
 
 router = APIRouter(tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 # ========================
@@ -69,7 +75,7 @@ def signup(data: SignUpRequest, db: Session = Depends(get_db)):
 
         # Generate and save OTP
         otp = generate_otp()
-        save_otp(data.reg_id, data.email, otp, db, expiry_minutes=10)
+        save_otp(data.reg_id, data.email, hash_otp(otp), db, expiry_minutes=10)
         
         # Send OTP email
         send_otp_email(data.email, otp)
@@ -82,7 +88,8 @@ def signup(data: SignUpRequest, db: Session = Depends(get_db)):
     
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("Signup processing failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error processing signup"
@@ -98,7 +105,6 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
     Step 2: User verifies OTP and sets password.
     Passwords must meet strength requirements.
     """
-    print("verify-otp called")
     try:
         # Check if user already exists
         if user_exists(data.reg_id, db):
@@ -140,10 +146,10 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
             )
 
         # Verify OTP
-        if valid_otp != data.otp:
+        if not verify_otp_value(data.otp, valid_otp):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid OTP. {3 - (attempts - 1)} attempts remaining."
+                detail=f"Invalid OTP. {max(0, 3 - attempts)} attempts remaining."
             )
 
         # Get student info for email
@@ -180,9 +186,12 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Error in verify-otp: {e}")
-        raise
+    except Exception:
+        logger.exception("OTP verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error verifying OTP",
+        )
 
 
 # ========================
@@ -220,7 +229,14 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         # Verify password
         if not verify_password(data.password, user.password_hash):
             increment_failed_login(user.id, db, lock_minutes=15)
-            record_login_attempt(user.id, False, db, ip_address=request.client.host, reason="invalid_password")
+            record_login_attempt(
+                user.id,
+                False,
+                db,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+                reason="invalid_password",
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -238,19 +254,25 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         )
 
         # Create session record
-        from app.utils.authentication import hash_token
         from datetime import datetime
         token_hash = hash_token(access_token)
-        session = create_session(
+        create_session(
             user_id=user.id,
             token_hash=token_hash,
             expires_at=datetime.utcnow() + timedelta(days=1),
             db=db,
-            ip_address=request.client.host
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
         )
 
         # Record successful login
-        record_login_attempt(user.id, True, db, ip_address=request.client.host)
+        record_login_attempt(
+            user.id,
+            True,
+            db,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
 
         return LoginResponse(
             access_token=access_token,
@@ -263,7 +285,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("Login failed unexpectedly")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error during login"
@@ -274,7 +297,10 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
 # 4. GET USER INFO
 # ========================
 @router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
-def get_current_user(token: str | None = None, db: Session = Depends(get_db)):
+def get_current_user(
+    token: str | None = Header(default=None, alias="X-User-Token"),
+    db: Session = Depends(get_db),
+):
     """
     Get current user info from token.
     """
@@ -284,12 +310,18 @@ def get_current_user(token: str | None = None, db: Session = Depends(get_db)):
             detail="No token provided"
         )
 
-    from app.utils.authentication import get_token_payload
     payload = get_token_payload(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token"
+        )
+
+    session = get_session_by_token_hash(hash_token(token), db)
+    if not session or session.user_id != payload["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is invalid or expired",
         )
 
     user = get_user_by_id(payload["user_id"], db)

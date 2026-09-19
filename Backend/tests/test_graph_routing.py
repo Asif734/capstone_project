@@ -1,9 +1,32 @@
 import unittest
+from unittest.mock import patch
 
-from app.utils.graph import get_greeting_response, response_language_instruction, route_question
+from langchain_core.runnables import RunnableLambda
+
+from app.utils.graph import (
+    detect_greeting,
+    build_retrieval_question,
+    get_greeting_response,
+    mental_support_agent,
+    response_language_instruction,
+    route_question,
+)
 
 
 class RouteQuestionTests(unittest.TestCase):
+    def test_greeting_must_be_the_whole_message(self):
+        self.assertTrue(detect_greeting("hi buddy"))
+        self.assertFalse(detect_greeting("hi, what courses are available?"))
+        self.assertFalse(detect_greeting("I think I should reconsider"))
+
+    def test_greeting_plus_question_routes_to_rag(self):
+        self.assertEqual(route_question("Hi, what courses are available?"), "rag")
+
+    def test_specialization_query_is_expanded_for_program_retrieval(self):
+        expanded = build_retrieval_question("Are there specialization courses?", [])
+        self.assertIn("degree program", expanded)
+        self.assertIn("MBA specialization", expanded)
+
     def test_do_you_know_me_routes_to_student_when_authenticated(self):
         self.assertEqual(route_question("do you know me?", is_authenticated=True), "student")
 
@@ -24,6 +47,25 @@ class RouteQuestionTests(unittest.TestCase):
 
     def test_not_feeling_good_routes_to_mental_support(self):
         self.assertEqual(route_question("not feeling good"), "mental_support")
+
+    def test_dynamic_assessment_can_route_ambiguous_distress(self):
+        assessment = {"response_mode": "clarify"}
+        self.assertEqual(
+            route_question("I think I am not feeling well", mental_health_assessment=assessment),
+            "mental_support",
+        )
+
+    def test_public_course_question_does_not_require_authentication(self):
+        self.assertEqual(route_question("Is there any specialization course?"), "rag")
+
+    def test_personal_course_question_requires_authentication(self):
+        self.assertEqual(route_question("What are my courses?"), "auth_required")
+
+    def test_course_decision_is_not_mistaken_for_private_student_data(self):
+        self.assertEqual(
+            route_question("I think I should not join the master's course"),
+            "chat",
+        )
 
     def test_academics_not_going_well_routes_to_mental_support(self):
         self.assertEqual(route_question("my academics are not going well at all"), "mental_support")
@@ -64,6 +106,30 @@ class RouteQuestionTests(unittest.TestCase):
             response_language_instruction("তুমি কেমন আছো"),
             "Reply in Bangla using Bengali script only.",
         )
+
+    def test_support_has_safe_fallback_when_llm_is_unavailable(self):
+        def fail(_):
+            raise ConnectionError("Ollama unavailable")
+
+        state = {
+            "question": "I am not feeling well",
+            "conversation_history": [],
+            "mental_health_assessment": {"response_mode": "clarify"},
+        }
+        with self.assertLogs("app.utils.graph", level="ERROR"):
+            with patch("app.utils.graph.llm", RunnableLambda(fail)):
+                result = mental_support_agent(state)
+
+        self.assertIn("physical illness", result["answer"])
+        self.assertNotIn("emergency", result["answer"].lower())
+
+    def test_bangla_crisis_response_uses_bangla(self):
+        result = mental_support_agent({
+            "question": "আমি আত্মহত্যা করতে চাই",
+            "conversation_history": [],
+            "mental_health_assessment": {"response_mode": "crisis"},
+        })
+        self.assertIn("আপনাকে একা", result["answer"])
 
 
 if __name__ == "__main__":
