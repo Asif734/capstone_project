@@ -1,0 +1,6 @@
+{
+  "f1": 0.24,
+  "retrieval_hit_rate": 0.90,
+  "semantic_similarity": 0.52,
+  "bertscore_f1": 0.82
+}

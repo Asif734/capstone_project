@@ -1,0 +1,179 @@
+question,answer,source_document,ollama_answer,f1_score,retrieval_hit,semantic_similarity,bertscore_f1
+What is BUP's basic identity?,"Bangladesh University of Professionals (BUP) was founded on June 5, 2008. It is Bangladesh's 31st public university, has the motto 'Excellence Through Knowledge,' and is located at Mirpur Cantonment, Dhaka-1216, Bangladesh.",1.1 Overview,"**Bangladesh University of Professionals (BUP) Basic Identity**
+
+BUP is a **Public University** established on **June 5, 2008**, with the motto **""Excellence through Knowledge""**. It is a **Military-administered institution**, affiliated with the **University Grants Commission (UGC)**, and is controlled by the **Bangladesh Armed Forces**.
+
+Would you like to know more about BUP's academic structure, programs, or something else?",0.493506,True,0.755048,0.875152
+"What are BUP's vision, mission, and values?","BUP's vision is to emerge as a leading university for professionals and general students through need-based education and research with a global perspective. Its mission is to develop civil and military human capital through advanced education and research for the contemporary knowledge-based society. Its core values are Integrity, Discipline, Creativity, Commitment, and Wisdom.","1.2 Vision, Mission & Core Values","**Bangladesh University of Professionals (BUP) Basic Identity**
+
+BUP is a **Public University** established on **June 5, 2008**, with the motto **""Excellence through Knowledge""**. It is a **Military-administered institution**, affiliated with the **University Grants Commission (UGC)**, and is controlled by the **Bangladesh Armed Forces**.
+
+Would you like to know more about BUP's academic structure, programs, or something else?",0.285714,True,0.645823,0.827937
+What are BUP's key statistics?,"The document lists 9,720 students, more than 9,000 affiliated-institute students, 515 teachers, 188 teachers with PhDs, 650 office staff, 18 departments plus Pharmacy, six faculties, eight student halls, and 55 affiliated institutes.",1.3 Key Statistics,I don't have information about BUP's key statistics.,0.000000,True,0.012282,0.820375
+Who leads BUP?,"The Chancellor is Mohammed Shahabuddin, President of the People's Republic of Bangladesh. The Vice Chancellor is Major General Md Mahbub-ul Alam, BSP, ndc, afwc, psc, MPhil, PhD, whose current tenure began on April 5, 2022.",2.1 Chancellor; 2.2 Vice Chancellor,"**Bangladesh University of Professionals (BUP) Leadership**
+
+BUP is led by the following key officials:
+
+* **Vice-Chancellor**: Major General Md Mahbub-ul Alam
+* **Pro-Vice Chancellor**: Khondoker Mokaddem Hossain
+* **Treasurer**: Air Commodore Md Reza Emdad Khan
+* **Registrar**: Brigadier General Md Rabbi Ahsan
+
+Would you like to know more about BUP's academic structure, programs, or something else?",0.320988,True,0.683479,0.811580
+"Which departments are in FASS, FSSS, and FST?","FASS includes Economics, Disaster Management and Resilience, English, Public Administration, Sociology, and Development Studies. FSSS includes International Relations, Law, Mass Communication and Journalism, and Peace, Conflict and Human Rights. FST includes ICT, Environmental Science, and Computer Science and Engineering.",3.1 Faculty of Arts & Social Sciences (FASS); 3.2 Faculty of Security & Strategic Studies (FSSS); 3.3 Faculty of Science & Technology (FST),"Here are the departments in FASS, FSSS, and FST:
+
+* FASS (Faculty of Arts and Social Sciences):
+	+ Department of Business Administration
+	+ Department of Sociology
+	+ Department of Law
+	+ Department of Information & Communication Technology
+	+ Department of Public Health & Informatics
+	+ Department of International Relations
+	+ Department of Environmental Science
+	+ Department of English
+	+ Department of Economics
+	+ Department of Mass Communication & Journalism
+* FSSS (Faculty of Security & Strategic Studies):
+	+ Department of International Relations
+	+ Department of Law
+	+ Department of Peace, Conflict & Human Rights
+	+ Department of Mass Communication & Journalism
+* FST (Faculty of Science & Technology):
+	+ Department of Information & Communication Engineering
+	+ Department of Environmental Science
+	+ Department of Computer Science and Engineering
+	+ Department of Economics
+
+Would you like to know more about these departments or their programs?",0.578313,True,0.705603,0.825557
+Which institutions offer FMS programs?,"MBBS programs are affiliated with Armed Forces Medical College and the Army Medical Colleges in Bogura, Chattogram, Cumilla, Jashore, and Rangpur. BSc Nursing programs are offered through the Armed Forces Medical Institute, Army Nursing College Cumilla, and Army Nursing College Rangpur.",3.5 Faculty of Medical Studies (FMS); MBBS Affiliated Colleges; BSc Nursing Programs,"**Bangladesh University of Professionals (BUP) Faculty of Medical Studies (FMS) Programs**
+
+The following institutions offer FMS programs:
+
+* **Armed Forces Medical College (AFMC)**: MBBS affiliated colleges
+* **Army Medical College Bogura**: MBBS affiliated college
+* **Army Medical College Chattogram**: MBBS affiliated college
+* **Army Medical College Cumilla**: MBBS affiliated college
+* **Army Medical College Jashore**: MBBS affiliated college
+* **Army Medical College Rangpur**: MBBS affiliated college
+* **Armed Forces Medical Institute (AFMI)**: BSc Nursing programs
+
+Would you like to know more about FMS programs or something else?",0.553846,True,0.580185,0.851805
+Which languages does CML offer?,"The Centre for Modern Languages offers Arabic, Chinese, English, French, German, Japanese, Russian, Turkish, and Burmese. It admits students twice a year for the January-June and July-December semesters.",3.6 Centre for Modern Languages (CML),"The Department of Computer Science and Engineering at Bangladesh University of Professionals (BUP) offers courses in the following programming languages:
+
+* C
+* C++
+* Java
+* Python
+* JavaScript
+* PHP
+* Ruby
+* Swift
+* Go
+* Kotlin
+
+Additionally, the department also offers courses in software development methodologies, data structures, algorithms, and computer networks, among others.
+
+Would you like to know more about CML's curriculum or any other related information?",0.100000,False,0.468396,0.805517
+What does the BUP Research Centre do?,"The BUP Research Centre was established on August 1, 2023, with the motto 'Inspiring Innovation for Advancing Knowledge.' It administers UGC-funded projects, operates as a consultancy organization, and independently identifies and funds research and innovation proposals.",3.8 BUP Research Centre (BRC); BRC Roles,"The **Bangladesh University of Professionals (BUP) Research Centre** provides various services, including:
+
+* Identifying and funding research/innovation proposals via the Project Evaluation Committee
+* Offering consultancy services in areas such as business studies, demographic and population studies, poverty studies, development studies, security studies, peace and conflict, public health, cyber security, and 4IR
+* Conducting surveys, baseline studies, impact studies, economic/financial analysis, feasibility studies, EIA/ESIA, vulnerability assessments, quality assurance, software testing, and end-line evaluation
+
+Would you like to know more about the BUP Research Centre's focus areas or any other related information?",0.173077,True,0.585693,0.838637
+How do MPhil and PhD admissions work?,"Admission notices are normally issued twice a year, generally in January-February and July-August. Candidates apply online through the BUP website. A candidate may select an associate professor or professor from a reputed university whose expertise matches the research synopsis, and BUP may also assign a supervisor.",PART 4: MPhil & PhD Admissions (CHSR),"**MPhil and PhD Admissions at Bangladesh University of Professionals**
+
+MPhil and PhD admissions at Bangladesh University of Professionals (BUP) are governed by the **Centre for Higher Studies & Research (CHSR)**. Here are the key points:
+
+* **MPhil:**
+	+ Duration: Typically 2 years (1 year coursework + 1 year research)
+	+ Credit structure: 32 credit hours total (Part I: 12 credits coursework + comprehensive oral; Part II: 20 credits seminars + thesis + defense)
+	+ Eligibility: Typically requires a Master's degree from a recognized institution
+* **PhD:**
+	+ Duration: Typically 3 years (1st year coursework if required, remaining for research & thesis)
+	+ Eligibility: Typically requires a Master's degree from a recognized institution
+	+ Key aspects: Coursework requirements vary by discipline, and the program includes supervisor assignment, progress seminars, and thesis defense
+
+Would you like to know more about the application process or specific requirements for MPhil and PhD programs?",0.181818,True,0.376325,0.804941
+What is the 2025-26 admission schedule?,"Applications open on November 10, 2025. They close on November 30, 2025, for FST and FSSS, while the listed closing date for FASS DMR is December 7, 2025. The eligible-candidate list is published on December 7, 2025, and admit cards are available from January 1, 2026. The FASS test is on January 10, 2026, and the FSSS test is on January 17, 2026. The application fee is Tk 1,100 per faculty.",5.0 Common Undergraduate Admission Schedule (2025-26 Intake),"Sure. BUP admission depends on the program level.
+
+Which one are you interested in?
+
+1. Undergraduate
+2. Master's
+3. MPhil / PhD
+
+If you already have a specific program in mind, tell me the program name.",0.108108,False,0.191174,0.812659
+What are the GCE and IB requirements?,"GCE applicants need at least 26.5 points from five O-Level and two A-Level subjects. Grades below D, or below grade 4 in the 9-1 system, are not considered. IB applicants must pass at least six subjects and obtain at least 30 points; ratings of 1, 2, and 3 are not counted.",5.1 GCE O/A Level Conversion Scale (All Programs); 5.2 International Baccalaureate (IB) — All Programs,"I don't have information about the GCE and IB requirements for admission to Bangladesh University of Professionals (BUP). 
+
+Would you like to know more about the **Centre for Higher Studies & Research (CHSR)** or any other related information?",0.162162,True,0.410064,0.810449
+What common undergraduate test rules apply?,"Candidates need at least 40% in English to qualify. Calculators are prohibited except in FST, FOE, and FMS examinations. Holders of foreign qualifications other than O/A Level or IB must submit an equivalence certificate from the Ministry of Education, an Education Board, or UGC Bangladesh.",5.3 Common Special Instructions,"**Common Undergraduate Test Rules at Bangladesh University of Professionals (BUP)**
+
+Here are the common rules that apply to undergraduate tests at BUP:
+
+* **Written Admission Tests**: BUP conducts written admission tests for undergraduate programs.
+* **Mark-Distribution and Negative Marking Rules**: Mark-distribution and negative marking rules are published in each admission circular.
+* **Test Dates and Thresholds**: Always check the current session's admission advertisement for accurate thresholds and test dates.
+* **Weightage**: Weightage of marks varies by unit/faculty and session (e.g., total SSC+HSC GPA requirements differ by faculty and year).
+
+Please note that these rules may vary by unit/faculty and session, so it's essential to check the current admission circular for specific details.
+
+Would you like to know more about the **Centre for Higher Studies & Research (CHSR)** or any other related information?",0.163934,True,0.510102,0.810478
+What is the FSSS test and credit structure?,"The common FSSS MCQ test allocates 40 marks to English, 40 to General Knowledge, and 20 to Bangla. Selection weightage is MCQ 55%, HSC 25%, and SSC 20%. International Relations requires 126 credits, Law 143, Mass Communication and Journalism 132, and Peace, Conflict and Human Rights Studies 120.","5.5 FSSS Undergraduate Programs; 5.5.1 BSS (Hons) in International Relations; 5.5.2 LLB (Hons) in Law; 5.5.3 BSS (Hons) in Mass Communication & Journalism; 5.5.4 BSS (Hons) in Peace, Conflict and Human Rights Studies","**FSSS Test and Credit Structure**
+
+Here are the key points about the **FSSS Test and Credit Structure**:
+
+* **FSSS Test**: Typically requires a minimum of 3.50/5 or first division in SSC/HSC, and a minimum of 2.50/4.0 in BSc.
+* **Credit Structure**: 32 credit hours total (Part I: 12 credits coursework + comprehensive oral; Part II: 20 credits seminars + thesis + defense)
+
+Would you like to know more about the **FSSS Undergraduate Programs** or any other related information?",0.210526,True,0.475143,0.814045
+What are the CSE admission details?,"CSE requires a combined GPA of 9.00, with at least A grades in Physics, Chemistry, and Mathematics and an A- in English at HSC. The program lasts four years or eight semesters and carries 160 credits. The FST test is a one-hour, 60-mark MCQ examination covering three of four sections: Mathematics, Biology, Physics, and Chemistry.",5.6 FST Undergraduate Programs; 5.6.1 B.Sc. in Computer Science and Engineering (CSE),"**CSE Admission Details**
+
+Here are the key points about the **CSE Admission**:
+
+* **Eligibility**: BSc in CSE, ICT, EEE, EECE, ETE, ECE, ICE, IT, Computer Science, Software Engineering, or relevant engineering
+* **GPA**: Min 2.50/4.0 or 50% in SSC and HSC
+* **Test Syllabus**: CSE: 35 marks
+* **MCQ Weightage**: Written 50% | Viva 15% | Previous Results 35% (BSc 15%, SSC 10%, HSC 10%)
+* **Contact**: 01670831181, 01632502269 | mcse@bup.edu.bd
+
+Would you like to know more about the **MCSE Program** or any other related information?",0.185185,True,0.668744,0.812664
+How do FBS admission tests differ?,"Business applicants answer 40 marks from Finance, Marketing, Accounting, and Organizational Management, plus English 25 and General Knowledge 10. Non-business applicants answer 40 marks from Mathematics, Statistics, Economics, and Analytical Ability, plus English 25 and General Knowledge 10. The BBA General test uses Mathematics and Analytical Ability 40, English 25, and General Knowledge 10.",5.7 FBS Undergraduate Programs,"**FBS Admission Tests**
+
+FBS (Faculty of Business Studies) admission tests differ from other BUP programs in several ways. Here are the key points:
+
+* **Test Format**: FBS admission tests are written tests, typically consisting of multiple-choice questions (MCQs) and short-answer questions.
+* **Test Syllabus**: The test syllabus covers a range of subjects, including business, economics, and finance.
+* **Weightage**: The weightage of the test is different from other programs, with a higher emphasis on business and finance subjects.
+* **Eligibility**: FBS admission tests are typically open to students who have completed their SSC and HSC exams, with a minimum GPA requirement.
+
+Would you like to know more about the **FBS Undergraduate Programs** or any other related information?",0.160000,True,0.551229,0.821966
+What are the MDS program details?,"The professional Master of Development Studies lasts 16 months and requires 51 credits. Classes are held on Friday and Saturday, with an online option for one week each month. Applicants need an honours bachelor's degree in any field with at least a second class or CGPA 2.5, or a BA/BSS pass degree with five years of development-sector experience. Selection is MCQ 60, writing 25, and viva 15.",6.1.2 Master of Development Studies (Professional) — MDS,I don't have information about the MDS program details.,0.028169,True,0.207211,0.818410
+What are the MCS program details?,"The Master's in Cyber Security lasts two years, costs Tk 2,20,000, and holds classes on Friday and Saturday. Eligible degrees include CSE, ICT, EECE, ETE, ECE, ICE, IT, Computer Science, Software Engineering, or a relevant field. Applicants need GPA 3.50 out of 5 or first division in SSC and HSC and at least 2.50 out of 4.00 in the bachelor's degree. The 100-mark test combines MCQs and analytical writing on Programming, Networking, DBMS, Operating Systems, and Mathematics or Algorithms.",6.3.2 Masters in Cyber Security (MCS),"**MCS Program Details**
+
+Here are the key points about the **MCS Program**:
+
+* **Duration**: 2 years / 4 semesters
+* **Credits**: 40 (Theory 33 + Project 7)
+* **Eligibility**: BSc in CSE/ICT/EECE/ETE/ECE/ICE/IT/CS/SE or relevant; GPA
+* **Application**: 01 October – 31 October (for Batch 2026)
+* **Admission Test**: 14 November 2025 (for Batch 2026)
+
+Would you like to know more about the **MCS Program** or any other related information?",0.251969,True,0.653006,0.811949
+What are the MPH program details?,"The MPH lasts two years or four semesters and requires 70 credits. Specializations are Epidemiology, Hospital Management, and Climate Change and Health. Eligible applicants may have a professional medical degree or a four-year BSc in specified life science, social science, psychology, computing, or IT fields, with Science in SSC and HSC and at least a second class or CGPA 2.50. Final weightage is written 65, viva 10, SSC 7, HSC 8, and bachelor's result 10.",6.5.1 Master of Public Health (MPH),I don't have information about the MPH program details.,0.084507,True,0.349031,0.817209
+What resources does the BUP Library provide?,"As of December 2025, the library has 31,000 books and 6,948 journals and magazines. It uses an RFID-based management system with email notifications, penalty management, and anti-theft functions. It provides 12 international electronic-resource links and off-campus access through Knimbus RemoteXs.",7.1 Library & Archive,"**BUP Library Resources**
+
+The Bangladesh University of Professionals (BUP) Library provides various resources to support students' academic needs. Here are some key resources:
+
+* **Books and Journals**: The library has a vast collection of books, journals, and magazines covering a wide range of subjects, including business, engineering, science, and social sciences.
+* **Online Resources**: The library offers online resources, such as e-books, e-journals, and online databases, to facilitate access to academic materials.
+* **Digital Archives**: The library has implemented a web-based digital archive to preserve records of the institution's activities and provide access to historical materials.
+* **Classroom Support**: The library provides digitalized classrooms for teaching and learning, and supports class attendance, assignments, and examination results publication.
+* **Study Spaces**: The library offers study spaces, including quiet areas, group study rooms, and collaborative workspaces, to facilitate student learning and research.
+
+Would you like to know more about the library's services or facilities?",0.181818,True,0.418534,0.828729
+How do BUP's two journals differ?,"The BUP Journal is published by CHSR, is double-blind peer-reviewed and open access, publishes two online issues per year combined into one printed volume, and has print ISSN 2219-4851 and online ISSN 2789-0392. The Journal of FST is published by the Faculty of Science and Technology, is a double-blind peer-reviewed annual, and has ISSN 2959-4812.",8.1 BUP Journal (BUPJ); 8.2 Journal of FST,"I don't have information about the specific details of BUP's two journals. However, I can tell you that the Bangladesh University of Professionals (BUP) publishes a double-blind peer-reviewed journal called **Journal of FST** (ISSN: 2959-4812) in collaboration with the Faculty of Science & Technology.
+
+Unfortunately, I couldn't find any information about the second journal published by BUP. If you're looking for information about a specific journal, I recommend checking the BUP website or contacting their publications department directly.
+
+Would you like to know more about the **Journal of FST** or is there anything else I can help you with?",0.378378,True,0.653528,0.850183
