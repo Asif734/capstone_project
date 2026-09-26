@@ -107,6 +107,38 @@ class RouteQuestionTests(unittest.TestCase):
             "Reply in Bangla using Bengali script only.",
         )
 
+    def test_mixed_banglish_message_requires_consistent_banglish_response(self):
+        self.assertEqual(
+            response_language_instruction("Amar kemon acho tumi? Tumi BUP-এর assistant."),
+            "Reply in Banglish, using romanized Bangla words and English letters only. Do not use Bengali script.",
+        )
+
+    def test_banglish_greeting_returns_banglish_without_llm(self):
+        self.assertEqual(
+            get_greeting_response("kemon acho tumi?"),
+            "Ami bhalo achi, dhonnobad! Ami BUP-er secure multilingual assistant. Apni ki jante chan?",
+        )
+
+    def test_bangla_greeting_returns_bengali_script(self):
+        self.assertEqual(
+            get_greeting_response("তুমি কেমন আছো?"),
+            "আমি ভালো আছি, ধন্যবাদ! আপনি কী জানতে চান?",
+        )
+
+    def test_common_banglish_typo_greeting_is_handled_without_llm(self):
+        self.assertTrue(detect_greeting("kemn acho?"))
+        self.assertEqual(
+            get_greeting_response("kemn acho?"),
+            "Ami bhalo achi, dhonnobad! Ami BUP-er secure multilingual assistant. Apni ki jante chan?",
+        )
+
+    def test_bengali_polite_greeting_is_handled_without_llm(self):
+        self.assertTrue(detect_greeting("আপনি কেমন আছেন?"))
+        self.assertEqual(
+            get_greeting_response("আপনি কেমন আছেন?"),
+            "আমি ভালো আছি, ধন্যবাদ! আপনি কী জানতে চান?",
+        )
+
     def test_support_has_safe_fallback_when_llm_is_unavailable(self):
         def fail(_):
             raise ConnectionError("Ollama unavailable")

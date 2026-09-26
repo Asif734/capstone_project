@@ -157,8 +157,14 @@ class RedisSemanticCacheService:
 
     def clear_cache(self) -> None:
         if self.is_available():
-            item_ids = self.redis_client.smembers(self.index_key)
-            keys = [f"{self.key_prefix}{item_id}" for item_id in item_ids]
-            if keys:
-                self.redis_client.delete(*keys)
-            self.redis_client.delete(self.index_key)
+            try:
+                item_ids = self.redis_client.smembers(self.index_key)
+                keys = [f"{self.key_prefix}{item_id}" for item_id in item_ids]
+                if keys:
+                    self.redis_client.delete(*keys)
+                self.redis_client.delete(self.index_key)
+            except Exception as exc:
+                logger.warning("Redis semantic cache clear failed: %s", exc)
+
+
+redis_cache_service = RedisSemanticCacheService()

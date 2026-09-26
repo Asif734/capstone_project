@@ -69,8 +69,12 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
   const [messages, setMessages] = useState([]);
-  const [activeView, setActiveView] = useState('chat');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [activeView, setActiveView] = useState(() => (
+    localStorage.getItem('adminToken') ? 'admin' : 'chat'
+  ));
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => (
+    Boolean(localStorage.getItem('adminToken'))
+  ));
   const [isSending, setIsSending] = useState(false);
   const isSendingRef = useRef(false);
   const [conversationId] = useState(getConversationId);

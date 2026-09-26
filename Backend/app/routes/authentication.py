@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from fastapi import APIRouter, HTTPException, Depends, Header, status, Request
+from fastapi import APIRouter, HTTPException, Depends, Header, status, Request, Form
 from sqlalchemy.orm import Session
 
 from app.schemas.authentication import (
@@ -8,6 +8,7 @@ from app.schemas.authentication import (
     OTPVerifyRequest,
     LoginRequest,
     LoginResponse,
+    OAuthTokenResponse,
     UserResponse,
 )
 from app.utils.authentication import (
@@ -19,6 +20,7 @@ from app.utils.authentication import (
     hash_otp,
     hash_token,
     get_token_payload,
+    extract_bearer_token,
     verify_otp_value,
     validate_password_strength,
 )
@@ -44,9 +46,11 @@ from app.db.database import (
     get_otp_email,
     get_session_by_token_hash,
 )
+from app.core.config import settings
 
 router = APIRouter(tags=["Authentication"])
 logger = logging.getLogger(__name__)
+OAUTH_SCOPES = "student.profile.read student.academic.read student.financial.read"
 
 
 # ========================
@@ -197,12 +201,67 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
 # ========================
 # 3. LOGIN
 # ========================
+@router.post("/oauth/token", response_model=OAuthTokenResponse, tags=["OAuth 2.0"])
+def oauth_token(
+    grant_type: str = Form(...),
+    username: str = Form(...),
+    password: str = Form(...),
+    scope: str = Form(default=""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """Issue a short-lived scoped bearer token for local OAuth migration."""
+    if not settings.ALLOW_LOCAL_OAUTH:
+        raise HTTPException(status_code=404, detail="OAuth token endpoint is disabled")
+    if grant_type != "password":
+        raise HTTPException(status_code=400, detail="Only grant_type=password is supported")
+
+    user = get_user_by_reg_id(username.upper(), db)
+    if not user or not user.is_active or not verify_password(password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    allowed_scopes = set(OAUTH_SCOPES.split())
+    requested_scopes = set(scope.split()) if scope else allowed_scopes
+    if not requested_scopes.issubset(allowed_scopes):
+        raise HTTPException(status_code=400, detail="Requested scope is not allowed")
+
+    access_token = create_access_token(
+        user_id=user.id,
+        reg_id=user.reg_id,
+        expires_delta=timedelta(minutes=15),
+        scopes=sorted(requested_scopes),
+    )
+    from datetime import datetime
+    create_session(
+        user_id=user.id,
+        token_hash=hash_token(access_token),
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+        db=db,
+        ip_address=request.client.host if request and request.client else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+    )
+    return OAuthTokenResponse(
+        access_token=access_token,
+        expires_in=15 * 60,
+        scope=" ".join(sorted(requested_scopes)),
+    )
+
+
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     User login with registration ID and password.
     Returns JWT access token on success.
     """
+    if settings.APP_ENV == "production":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Local login is disabled; use the configured OAuth provider",
+        )
     try:
         # Get user
         user = get_user_by_reg_id(data.reg_id, db)
@@ -250,7 +309,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         access_token = create_access_token(
             user_id=user.id,
             reg_id=user.reg_id,
-            expires_delta=timedelta(minutes=1440)  # 24 hours
+            expires_delta=timedelta(minutes=1440),  # 24 hours
+            scopes=OAUTH_SCOPES.split(),
         )
 
         # Create session record
@@ -299,11 +359,18 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def get_current_user(
     token: str | None = Header(default=None, alias="X-User-Token"),
+    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
     """
     Get current user info from token.
     """
+    bearer_token = extract_bearer_token(authorization)
+    if authorization and not bearer_token:
+        raise HTTPException(status_code=401, detail="Malformed Authorization header")
+    if token and not settings.ALLOW_LEGACY_USER_TOKEN:
+        raise HTTPException(status_code=401, detail="Legacy token header is disabled")
+    token = bearer_token or token
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -318,7 +385,7 @@ def get_current_user(
         )
 
     session = get_session_by_token_hash(hash_token(token), db)
-    if not session or session.user_id != payload["user_id"]:
+    if not payload.get("external") and (not session or session.user_id != payload["user_id"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session is invalid or expired",

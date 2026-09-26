@@ -19,6 +19,7 @@ class SourceDocument(BaseModel):
     doc_id: str
     chunk_index: int
     source_name: Optional[str] = None
+    title: Optional[str] = None
 
 class QueryResponse(BaseModel):
     answer: str

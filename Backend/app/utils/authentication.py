@@ -149,7 +149,26 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_access_token(user_id: int, reg_id: str, expires_delta: Optional[timedelta] = None) -> str:
+def extract_bearer_token(authorization: str | None) -> str | None:
+    """Extract a well-formed Bearer token from an Authorization header."""
+    if not authorization:
+        return None
+    scheme, separator, token = authorization.partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def has_scope(payload: Dict[str, Any], required_scope: str) -> bool:
+    return required_scope in str(payload.get("scope", "")).split()
+
+
+def create_access_token(
+    user_id: int,
+    reg_id: str,
+    expires_delta: Optional[timedelta] = None,
+    scopes: Optional[list[str]] = None,
+) -> str:
     """Create JWT access token with user info"""
     if not SECRET_KEY:
         raise HTTPException(
@@ -167,7 +186,8 @@ def create_access_token(user_id: int, reg_id: str, expires_delta: Optional[timed
         "reg_id": reg_id,
         "exp": expire,
         "iat": datetime.utcnow(),
-        "type": "access"
+        "type": "access",
+        "scope": " ".join(scopes or ["student.profile.read"]),
     }
     
     encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -202,18 +222,36 @@ def verify_token(token: str) -> Dict[str, Any] | None:
         return None
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("user_id")
-        reg_id = payload.get("reg_id")
+        if settings.APP_ENV == "production":
+            jwks_client = jwt.PyJWKClient(settings.OAUTH_JWKS_URL)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
+                audience=settings.OAUTH_AUDIENCE,
+                issuer=settings.OAUTH_ISSUER,
+                options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+            )
+            user_id = payload.get(settings.OAUTH_USER_ID_CLAIM)
+            reg_id = payload.get(settings.OAUTH_REG_ID_CLAIM)
+            external = True
+        else:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("user_id")
+            reg_id = payload.get("reg_id")
+            external = False
         token_type = payload.get("type")
         
-        if not user_id or not reg_id or token_type != "access":
+        if not user_id or not reg_id or (not external and token_type != "access"):
             return None
         
         return {
             "user_id": user_id,
             "reg_id": reg_id,
-            "type": token_type
+            "type": token_type,
+            "scope": payload.get("scope", ""),
+            "external": external,
         }
     except jwt.ExpiredSignatureError:
         return None

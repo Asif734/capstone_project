@@ -60,6 +60,14 @@ class LoginResponse(BaseModel):
     message: str
 
 
+class OAuthTokenResponse(BaseModel):
+    """OAuth 2.0 token endpoint response."""
+    access_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    scope: str
+
+
 class UserResponse(BaseModel):
     """User info response"""
     id: int

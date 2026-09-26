@@ -21,7 +21,7 @@ class Settings:
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
     LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
     OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
-    OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "256"))
+    OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "1024"))
     OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
 
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -45,7 +45,7 @@ class Settings:
     PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
     PINECONE_UPSERT_BATCH_SIZE = int(os.getenv("PINECONE_UPSERT_BATCH_SIZE", "100"))
     RAG_SCORE_THRESHOLD = float(os.getenv("RAG_SCORE_THRESHOLD", "0.35"))
-    MENTAL_HEALTH_ML_THRESHOLD = float(os.getenv("MENTAL_HEALTH_ML_THRESHOLD", "0.80"))
+    MENTAL_HEALTH_ML_THRESHOLD = float(os.getenv("MENTAL_HEALTH_ML_THRESHOLD", "0.45"))
     SEED_LOCAL_DATA = os.getenv(
         "SEED_LOCAL_DATA", "true" if APP_ENV == "development" else "false"
     ).lower() == "true"
@@ -61,6 +61,17 @@ class Settings:
     REDIS_CACHE_MAX_CANDIDATES = int(os.getenv("REDIS_CACHE_MAX_CANDIDATES", "500"))
 
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+    OAUTH_ISSUER = os.getenv("OAUTH_ISSUER")
+    OAUTH_AUDIENCE = os.getenv("OAUTH_AUDIENCE")
+    OAUTH_JWKS_URL = os.getenv("OAUTH_JWKS_URL")
+    OAUTH_USER_ID_CLAIM = os.getenv("OAUTH_USER_ID_CLAIM", "user_id")
+    OAUTH_REG_ID_CLAIM = os.getenv("OAUTH_REG_ID_CLAIM", "reg_id")
+    ALLOW_LOCAL_OAUTH = os.getenv(
+        "ALLOW_LOCAL_OAUTH", "true" if APP_ENV == "development" else "false"
+    ).lower() == "true"
+    ALLOW_LEGACY_USER_TOKEN = os.getenv(
+        "ALLOW_LEGACY_USER_TOKEN", "true" if APP_ENV == "development" else "false"
+    ).lower() == "true"
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bup.com")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
     ADMIN_TOKEN_EXPIRE_MINUTES = int(os.getenv("ADMIN_TOKEN_EXPIRE_MINUTES", "480"))
@@ -87,6 +98,19 @@ class Settings:
         missing = []
         if not self.JWT_SECRET_KEY or len(self.JWT_SECRET_KEY) < 32:
             missing.append("JWT_SECRET_KEY (at least 32 characters)")
+        if self.APP_ENV == "production":
+            if not self.OAUTH_ISSUER:
+                missing.append("OAUTH_ISSUER")
+            if not self.OAUTH_AUDIENCE:
+                missing.append("OAUTH_AUDIENCE")
+            if not self.OAUTH_JWKS_URL:
+                missing.append("OAUTH_JWKS_URL")
+            if not self.OAUTH_USER_ID_CLAIM or not self.OAUTH_REG_ID_CLAIM:
+                missing.append("OAUTH_USER_ID_CLAIM and OAUTH_REG_ID_CLAIM")
+            if self.ALLOW_LOCAL_OAUTH:
+                missing.append("ALLOW_LOCAL_OAUTH=false")
+            if self.ALLOW_LEGACY_USER_TOKEN:
+                missing.append("ALLOW_LEGACY_USER_TOKEN=false")
         if not self.ADMIN_PASSWORD or len(self.ADMIN_PASSWORD) < 12:
             missing.append("ADMIN_PASSWORD (at least 12 characters)")
         if self.LLM_PROVIDER != "ollama":

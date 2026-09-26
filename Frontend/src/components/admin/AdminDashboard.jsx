@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -72,8 +72,8 @@ const formatConfidence = (value) => {
 const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) => {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [activeToken, setActiveToken] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [activeToken, setActiveToken] = useState(() => localStorage.getItem('adminToken') || '');
+  const [isAuthorized, setIsAuthorized] = useState(() => Boolean(localStorage.getItem('adminToken')));
   const [activeTab, setActiveTab] = useState('alerts');
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -126,6 +126,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       setAlerts(sortAlerts(alertData));
       setStudents(studentData);
       setActiveToken(token);
+      localStorage.setItem('adminToken', token);
       setAdminPassword('');
       setIsAuthorized(true);
       if (onAdminAuth) onAdminAuth();
@@ -133,10 +134,18 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       setIsAuthorized(false);
       setError(err.message || 'Unable to load admin dashboard.');
       setActiveToken('');
+      localStorage.removeItem('adminToken');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('adminToken');
+    if (storedToken && !summary && !loading) {
+      loadDashboard(storedToken);
+    }
+  }, []);
 
   const handleLoginSubmit = (event) => {
     event.preventDefault();
@@ -274,6 +283,7 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
   };
 
   const handleAdminLogout = () => {
+    localStorage.removeItem('adminToken');
     setActiveToken('');
     setIsAuthorized(false);
     setAdminEmail('');

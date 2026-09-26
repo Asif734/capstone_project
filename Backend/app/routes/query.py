@@ -11,8 +11,14 @@ from app.utils.graph import (
 )
 from app.services.memory_service import MemoryService
 from app.services.mental_health_service import MentalHealthService
-from app.services.redis_service import RedisSemanticCacheService
-from app.utils.authentication import get_token_payload, hash_token
+from app.services.redis_service import redis_cache_service
+from app.utils.authentication import (
+    extract_bearer_token,
+    get_token_payload,
+    has_scope,
+    hash_token,
+)
+from app.core.config import settings
 from app.db.database import get_db, get_session_by_token_hash
 
 
@@ -21,7 +27,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 memory_service = MemoryService()
 mental_health_service = MentalHealthService(memory_service=memory_service)
-redis_cache_service = RedisSemanticCacheService()
 
 
 def sources_to_dicts(sources: list[SourceDocument]) -> list[dict]:
@@ -49,6 +54,7 @@ def evaluate_mental_health_if_needed(
 def query_documents(
     request: QueryRequest,
     user_token: str | None = Header(default=None, alias="X-User-Token"),
+    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
     try:
@@ -56,15 +62,21 @@ def query_documents(
         user_id = None
         user_reg_id = None
 
-        if user_token:
-            payload = get_token_payload(user_token)
+        bearer_token = extract_bearer_token(authorization)
+        if authorization and not bearer_token:
+            raise HTTPException(status_code=401, detail="Malformed Authorization header")
+        if user_token and not settings.ALLOW_LEGACY_USER_TOKEN:
+            raise HTTPException(status_code=401, detail="Legacy token header is disabled")
+        supplied_token = bearer_token or user_token
+        if supplied_token:
+            payload = get_token_payload(supplied_token)
             if not payload:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid or expired user token",
                 )
-            session = get_session_by_token_hash(hash_token(user_token), db)
-            if not session or session.user_id != payload.get("user_id"):
+            session = get_session_by_token_hash(hash_token(supplied_token), db)
+            if not payload.get("external") and (not session or session.user_id != payload.get("user_id")):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Session is invalid or expired",
@@ -72,6 +84,15 @@ def query_documents(
             is_authenticated = True
             user_id = payload.get("user_id")
             user_reg_id = payload.get("reg_id")
+
+            requested_private_scope = None
+            lowered_question = request.question.lower()
+            if any(term in lowered_question for term in ("financial", "fees", "dues", "payment")):
+                requested_private_scope = "student.financial.read"
+            elif any(term in lowered_question for term in ("marks", "grades", "cgpa", "result", "transcript")):
+                requested_private_scope = "student.academic.read"
+            if requested_private_scope and not has_scope(payload, requested_private_scope):
+                raise HTTPException(status_code=403, detail="Insufficient scope for this request")
 
         interaction_user_id = str(user_id) if user_id is not None else request.user_id
         conversation_history = memory_service.get_user_memory(interaction_user_id)[-6:]
@@ -135,6 +156,7 @@ def query_documents(
                 doc_id=metadata.get("doc_id", "unknown"),
                 chunk_index=metadata.get("chunk_index", 0),
                 source_name=metadata.get("source_name"),
+                title=metadata.get("title"),
             ))
 
         answer = result.get("answer", "")

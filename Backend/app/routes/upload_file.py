@@ -10,7 +10,8 @@ from app.core.config import settings
 from app.routes.admin import require_admin
 from app.services.embedding import get_embedding
 from app.services.pinecone import store_embeddings
-from app.utils.preprocess_text import chunk_text, clean_text, extract_text
+from app.services.redis_service import redis_cache_service
+from app.utils.preprocess_text import chunk_sections, clean_text, extract_sections
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -28,18 +29,24 @@ def normalize_doc_id(value: str | None) -> str:
 
 
 def ingest_document(file_bytes: bytes, filename: str, doc_id: str) -> int:
-    text = extract_text(file_bytes, filename, max_pages=settings.MAX_DOCUMENT_PAGES)
-    cleaned_text = clean_text(text)
-    if not cleaned_text:
+    sections = extract_sections(
+        file_bytes, filename, max_pages=settings.MAX_DOCUMENT_PAGES
+    )
+    if not any(clean_text(text) for _, text in sections):
         raise ValueError("The document contains no extractable text")
-    chunks = chunk_text(cleaned_text)
+    section_chunks = chunk_sections(sections)
+    chunks = [chunk for chunk, _ in section_chunks]
+    titles = [title for _, title in section_chunks]
     embeddings = get_embedding(chunks)
-    return store_embeddings(
+    stored_count = store_embeddings(
         chunks=chunks,
         embeddings=embeddings,
         doc_id=doc_id,
         source_name=filename,
+        titles=titles,
     )
+    redis_cache_service.clear_cache()
+    return stored_count
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)

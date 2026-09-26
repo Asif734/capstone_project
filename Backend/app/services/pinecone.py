@@ -48,10 +48,13 @@ def store_embeddings(
     embeddings,
     doc_id=None,
     source_name=None,
+    titles=None,
     max_metadata_length=3000,
 ):
     if len(chunks) != len(embeddings):
         raise ValueError("Chunk and embedding counts do not match")
+    if titles is not None and len(chunks) != len(titles):
+        raise ValueError("Chunk and title counts do not match")
     if not chunks:
         raise ValueError("No document chunks were generated")
     if not doc_id:
@@ -67,16 +70,19 @@ def store_embeddings(
                 f"{settings.PINECONE_DIMENSION}"
             )
         safe_text = chunk[:max_metadata_length]
+        metadata = {
+            "text": safe_text,
+            "doc_id": doc_id,
+            "chunk_index": i,
+            "source_name": source_name or doc_id,
+            "ingested_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if titles and titles[i]:
+            metadata["title"] = titles[i]
         vectors.append({
             "id": f"{doc_id}_chunk_{i}",
             "values": values,
-            "metadata": {
-                "text": safe_text,
-                "doc_id": doc_id,
-                "chunk_index": i,
-                "source_name": source_name or doc_id,
-                "ingested_at": datetime.now(timezone.utc).isoformat(),
-            }
+            "metadata": metadata,
         })
 
     batch_size = settings.PINECONE_UPSERT_BATCH_SIZE
