@@ -7,6 +7,7 @@ from app.utils.graph import (
     build_retrieval_question,
     is_public_cacheable_route,
     rag_graph,
+    response_language_code,
     route_question,
 )
 from app.services.memory_service import MemoryService
@@ -108,8 +109,12 @@ def query_documents(
             mental_health_assessment=mental_health_assessment,
         )
         cache_question = build_retrieval_question(request.question, conversation_history)
+        response_language = response_language_code(request.question)
         if is_public_cacheable_route(route):
-            cached = redis_cache_service.get_similar_answer(cache_question)
+            cached = redis_cache_service.get_similar_answer(
+                cache_question,
+                language=response_language,
+            )
             if cached:
                 sources = [
                     SourceDocument(**source)
@@ -181,6 +186,7 @@ def query_documents(
                 answer=answer,
                 sources=sources_to_dicts(sources),
                 route=result.get("route", "rag"),
+                language=response_language,
             )
 
         return QueryResponse(

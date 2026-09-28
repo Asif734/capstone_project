@@ -84,7 +84,7 @@ class RedisSemanticCacheService:
         normalized = " ".join(question.lower().strip().split())
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
-    def get_similar_answer(self, question: str) -> dict[str, Any] | None:
+    def get_similar_answer(self, question: str, language: str = "en") -> dict[str, Any] | None:
         if not self.is_available():
             return None
 
@@ -93,6 +93,8 @@ class RedisSemanticCacheService:
             exact = self.redis_client.get(f"{self.key_prefix}{exact_id}")
             if exact:
                 item = json.loads(exact)
+                if item.get("language") != language:
+                    return None
                 return {
                     "answer": item["answer"],
                     "matched_question": item["question"],
@@ -112,6 +114,8 @@ class RedisSemanticCacheService:
                     continue
 
                 item = json.loads(cached)
+                if item.get("language") != language:
+                    continue
                 score = self._cosine_similarity(query_embedding, item.get("embedding", []))
                 if score > best_score:
                     best_score = score
@@ -135,6 +139,7 @@ class RedisSemanticCacheService:
         answer: str,
         sources: list[dict[str, Any]] | None = None,
         route: str = "rag",
+        language: str = "en",
     ) -> None:
         if not self.is_available() or not answer:
             return
@@ -148,6 +153,7 @@ class RedisSemanticCacheService:
                 "embedding": self._embedding(question),
                 "sources": sources or [],
                 "route": route,
+                "language": language,
             }
             self.redis_client.set(key, json.dumps(payload), ex=self.ttl)
             self.redis_client.sadd(self.index_key, item_id)
