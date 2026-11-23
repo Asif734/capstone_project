@@ -1,13 +1,20 @@
 # schemas/authentication.py
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
+
+
+CONSENT_VERSION = "2026-11-07"
 
 
 class SignUpRequest(BaseModel):
     """User signup request with validation"""
     reg_id: str = Field(..., min_length=3, max_length=20, description="Registration ID")
     email: EmailStr = Field(..., description="Valid email address")
+    consent_accepted: Literal[True] = Field(
+        ...,
+        description="The student must accept the conversation and wellbeing data consent",
+    )
     
     @field_validator("reg_id")
     @classmethod

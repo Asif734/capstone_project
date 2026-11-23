@@ -27,7 +27,10 @@ from app.schemas.admin import (
     StudentMentalHealthResponse,
     StudentRecordResponse,
     StudentRecordUpdate,
+    AccessAuditLogListResponse,
+    AccessAuditLogResponse,
 )
+from app.services.audit_service import get_audit_logs
 
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -483,3 +486,36 @@ def get_student_mental_health(
         student=student,
         alerts=[serialize_alert(alert, student) for alert in alerts],
     )
+
+
+@router.get(
+    "/audit-logs",
+    response_model=AccessAuditLogListResponse,
+)
+def list_audit_logs(
+    limit: int = 50,
+    offset: int = 0,
+    actor_student_id: str | None = None,
+    target_student_id: str | None = None,
+    action_type: str | None = None,
+    auth_status: str | None = None,
+    agent_node: str | None = None,
+    _: None = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    FERPA audit log inspection endpoint restricted to administrators.
+    Allows filtered, paginated review of data access and unauthorized attempts.
+    """
+    total, items = get_audit_logs(
+        db,
+        limit=max(1, min(limit, 200)),
+        offset=max(0, offset),
+        actor_student_id=actor_student_id,
+        target_student_id=target_student_id,
+        action_type=action_type,
+        auth_status=auth_status,
+        agent_node=agent_node,
+    )
+    return AccessAuditLogListResponse(total=total, items=items)
+

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from app.db.sqldb import Base
 
 
@@ -110,6 +111,8 @@ class User(Base):
     # Account status
     is_active = Column(Boolean, default=True, index=True)
     is_verified = Column(Boolean, default=False)
+    consent_accepted_at = Column(DateTime, nullable=True)
+    consent_version = Column(String, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
@@ -140,6 +143,8 @@ class OTP(Base):
     attempts = Column(Integer, default=0)
     max_attempts = Column(Integer, default=3)
     is_used = Column(Boolean, default=False)
+    consent_accepted_at = Column(DateTime, nullable=True)
+    consent_version = Column(String, nullable=True)
 
 
 class Session(Base):
@@ -208,3 +213,28 @@ class ChatInteraction(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
+
+
+class AccessAuditLog(Base):
+    """
+    FERPA-compliant immutable access audit log.
+    Records private student record lookups and unauthorized access attempts.
+    Zero raw PII (names, full messages, marks, CGPA) is recorded.
+    """
+    __tablename__ = "access_audit_logs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    timestamp = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    actor_student_id = Column(String(64), nullable=True, index=True)
+    target_student_id = Column(String(64), nullable=True, index=True)
+    agent_node = Column(String(64), nullable=False, index=True)
+    action_type = Column(String(64), nullable=False, index=True)
+    auth_status = Column(String(32), nullable=False, index=True)
+    token_jti = Column(String(128), nullable=True, index=True)
+    client_ip = Column(String(64), nullable=True)
+

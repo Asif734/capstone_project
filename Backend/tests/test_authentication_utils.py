@@ -1,6 +1,8 @@
 import unittest
+from pydantic import ValidationError
 
 from app.utils import authentication
+from app.schemas.authentication import SignUpRequest
 from app.utils.authentication import (
     create_access_token,
     extract_bearer_token,
@@ -42,6 +44,23 @@ class AuthenticationUtilityTests(unittest.TestCase):
         payload = {"scope": "student.academic.read student.profile.read"}
         self.assertTrue(has_scope(payload, "student.academic.read"))
         self.assertFalse(has_scope(payload, "student.financial.read"))
+
+    def test_signup_requires_explicit_data_consent(self):
+        signup = SignUpRequest(
+            reg_id="ABC123",
+            email="student@example.edu",
+            consent_accepted=True,
+        )
+        self.assertTrue(signup.consent_accepted)
+
+        for consent in (None, False):
+            with self.subTest(consent=consent):
+                with self.assertRaises(ValidationError):
+                    SignUpRequest(
+                        reg_id="ABC123",
+                        email="student@example.edu",
+                        consent_accepted=consent,
+                    )
 
     def test_local_access_token_can_include_academic_scope(self):
         token = create_access_token(

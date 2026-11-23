@@ -20,6 +20,8 @@ Optional Redis semantic cache (public RAG answers only)
 
 The wellbeing component is a risk-signal and response-routing aid, not a diagnosis system. Explicit safety language takes priority over ML output. Ambiguous statements such as “I am not feeling well” receive a gentle clarification instead of an automatic crisis response or diagnosis.
 
+Student signup requires explicit agreement to the conversation and wellbeing data consent before an OTP is sent. The accepted consent version and timestamp are stored with the account. The consent explains conversation storage, automated wellbeing analysis, administrator access to alerts, and current retention/model-training behavior.
+
 ## Local setup
 
 Requirements: Python 3.11+, Node.js 22+, Ollama, and optionally Redis. Pinecone is required for document ingestion and public RAG queries.

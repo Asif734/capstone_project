@@ -179,12 +179,12 @@ The system analyzes recent student messages and checks for possible risk signals
 Detection features:
 
 - Uses recent chat history
-- Loads a trained LightGBM model
-- Uses TF-IDF text features
-- Predicts mental-health categories
-- Maps predicted classes into risk levels
+- Supports tri-lingual detection across English, Banglish, and native Bengali script (বাংলা)
+- Loads a trained hybrid TF-IDF (70,000 character and word n-grams) calibrated model bundle (`models/multilingual_mental_health_model.joblib`)
+- Predicts mental-health categories with calibrated confidence scores
+- Maps predicted classes into risk levels and automated crisis triage flags
 - Creates alerts when risk is high enough
-- Includes a rule-based fallback if the ML model is unavailable
+- Includes fallback to legacy LightGBM model and rule-based patterns if the bundle is unavailable
 
 Possible model classes:
 

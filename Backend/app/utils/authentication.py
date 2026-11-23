@@ -8,6 +8,7 @@ import string
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import uuid
 
 import jwt
 from fastapi import HTTPException, status
@@ -182,6 +183,7 @@ def create_access_token(
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     payload = {
+        "jti": str(uuid.uuid4()),
         "user_id": user_id,
         "reg_id": reg_id,
         "exp": expire,
@@ -205,6 +207,7 @@ def create_refresh_token(user_id: int, reg_id: str) -> str:
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
     payload = {
+        "jti": str(uuid.uuid4()),
         "user_id": user_id,
         "reg_id": reg_id,
         "exp": expire,

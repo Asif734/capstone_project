@@ -181,3 +181,24 @@ class StudentRecordUpdate(BaseModel):
     financial: Optional[FinancialRecordPayload] = None
     cgpa_records: Optional[list[CGPARecordPayload]] = None
     courses: Optional[list[CourseRecordPayload]] = None
+
+
+class AccessAuditLogResponse(BaseModel):
+    id: str
+    timestamp: datetime
+    actor_student_id: Optional[str] = None
+    target_student_id: Optional[str] = None
+    agent_node: str
+    action_type: str
+    auth_status: str
+    token_jti: Optional[str] = None
+    client_ip: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AccessAuditLogListResponse(BaseModel):
+    total: int
+    items: list[AccessAuditLogResponse]
+

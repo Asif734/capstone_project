@@ -7,7 +7,10 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+        try:
+            _model = SentenceTransformer(settings.EMBEDDING_MODEL, local_files_only=True)
+        except Exception:
+            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
     return _model
 
 def get_embedding(chunks):

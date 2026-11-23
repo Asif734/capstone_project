@@ -1,11 +1,16 @@
+import html
 import logging
-import re
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
 import os
+import re
+import unicodedata
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import List, Dict, Optional
+
 import joblib
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from scipy.sparse import hstack
 
 from app.services.memory_service import MemoryService
 from app.services.llm_service import get_llm
@@ -15,6 +20,22 @@ from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_model_path(path_str: str) -> Path:
+    p = Path(path_str)
+    if p.is_absolute() and p.exists():
+        return p
+    # Relative to Backend root directory (parent of app)
+    backend_dir = Path(__file__).resolve().parents[2]
+    candidate1 = backend_dir / p
+    if candidate1.exists():
+        return candidate1
+    # Relative to current working directory
+    candidate2 = Path.cwd() / p
+    if candidate2.exists():
+        return candidate2
+    return candidate1
 
 
 class MentalHealthService:
@@ -27,18 +48,73 @@ class MentalHealthService:
         self.alert_cooldown_hours = 24
         self._init_rule_based_patterns()
 
-        # Load ML model and preprocessing artifacts
+        self.use_ml = False
+        self.is_multilingual = False
+        self.model = None
+        self.char_vec = None
+        self.word_vec = None
+        self.vectorizer = None
+        self.label_encoder = None
+        self.classes: List[str] = []
+
+        self._load_model()
+
+    def _load_model(self) -> None:
+        """Load multilingual model bundle or legacy artifacts with fallback."""
+        model_rel_path = getattr(
+            settings,
+            "MULTILINGUAL_MENTAL_HEALTH_MODEL_PATH",
+            "models/multilingual_mental_health_model.joblib",
+        )
+        bundle_path = resolve_model_path(model_rel_path)
+        if bundle_path.exists():
+            try:
+                bundle = joblib.load(bundle_path)
+                if (
+                    isinstance(bundle, dict)
+                    and "model" in bundle
+                    and "char_vec" in bundle
+                    and "word_vec" in bundle
+                ):
+                    self.model = bundle["model"]
+                    self.char_vec = bundle["char_vec"]
+                    self.word_vec = bundle["word_vec"]
+                    self.classes = [
+                        str(c)
+                        for c in (bundle.get("classes") or getattr(self.model, "classes_", []))
+                    ]
+                    self.is_multilingual = True
+                    self.use_ml = True
+                    logger.info("Multilingual mental-health model bundle loaded from %s", bundle_path)
+                    return
+            except Exception as exc:
+                logger.warning("Failed loading multilingual bundle from %s: %s", bundle_path, exc)
+
+        # Legacy model loading fallback
         model_dir = os.path.dirname(__file__)
-        try:
-            self.model = joblib.load(os.path.join(model_dir, 'best_mental_health_model.pkl'))
-            self.vectorizer = joblib.load(os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
-            self._repair_vectorizer_compatibility()
-            self.label_encoder = joblib.load(os.path.join(model_dir, 'label_encoder.pkl'))
-            self.use_ml = True
-            logger.info("Mental-health classification model loaded")
-        except (FileNotFoundError, OSError, ValueError, TypeError, AttributeError, ImportError) as exc:
-            logger.warning("Mental-health model unavailable; using rules: %s", exc)
-            self.use_ml = False
+        legacy_model_path = os.path.join(model_dir, "best_mental_health_model.pkl")
+        legacy_vec_path = os.path.join(model_dir, "tfidf_vectorizer.pkl")
+        legacy_le_path = os.path.join(model_dir, "label_encoder.pkl")
+        if (
+            os.path.exists(legacy_model_path)
+            and os.path.exists(legacy_vec_path)
+            and os.path.exists(legacy_le_path)
+        ):
+            try:
+                self.model = joblib.load(legacy_model_path)
+                self.vectorizer = joblib.load(legacy_vec_path)
+                self._repair_vectorizer_compatibility()
+                self.label_encoder = joblib.load(legacy_le_path)
+                self.classes = [str(c) for c in getattr(self.label_encoder, "classes_", [])]
+                self.is_multilingual = False
+                self.use_ml = True
+                logger.info("Legacy mental-health model loaded from %s", model_dir)
+                return
+            except Exception as exc:
+                logger.warning("Failed loading legacy mental-health model: %s", exc)
+
+        logger.warning("No mental-health ML model available; using rule-based fallback")
+        self.use_ml = False
 
     def _repair_vectorizer_compatibility(self) -> None:
         """Restore TF-IDF internals when loading newer sklearn pickles."""
@@ -191,24 +267,43 @@ class MentalHealthService:
             rule_analysis.update({
                 "risk_level": "normal",
                 "predicted_class": "none",
+                "raw_predicted_class": "none",
                 "confidence": 0.0,
                 "rule_score": rule_analysis["score"],
             })
             return rule_analysis
 
-        # Vectorize and predict
-        X = self.vectorizer.transform([cleaned_text])
-        if hasattr(self.model, "booster_"):
-            probabilities = self.model.booster_.predict(X)[0]
-            predicted_position = max(range(len(probabilities)), key=probabilities.__getitem__)
-            predicted_class_idx = self.model.classes_[predicted_position]
-        else:
+        if self.is_multilingual:
+            f_c = self.char_vec.transform([cleaned_text])
+            f_w = self.word_vec.transform([cleaned_text])
+            X = hstack([f_c, f_w]).tocsr()
+
             probabilities = self.model.predict_proba(X)[0]
-            predicted_class_idx = self.model.predict(X)[0]
-        predicted_class = self.label_encoder.inverse_transform([predicted_class_idx])[0]
-        model_classes = list(self.model.classes_)
-        probability_index = model_classes.index(predicted_class_idx)
-        confidence = float(probabilities[probability_index])
+            prob_dict = {
+                str(cls_name): float(prob)
+                for cls_name, prob in zip(self.classes, probabilities)
+            }
+            predicted_class = str(self.model.predict(X)[0])
+            confidence = float(probabilities.max())
+
+            # Crisis triage rule: prioritize safety risk if Suicidal probability >= 0.35
+            suicidal_prob = prob_dict.get("Suicidal", 0.0)
+            if suicidal_prob >= 0.35:
+                predicted_class = "Suicidal"
+                confidence = float(suicidal_prob)
+        else:
+            X = self.vectorizer.transform([cleaned_text])
+            if hasattr(self.model, "booster_"):
+                probabilities = self.model.booster_.predict(X)[0]
+                predicted_position = max(range(len(probabilities)), key=probabilities.__getitem__)
+                predicted_class_idx = self.model.classes_[predicted_position]
+            else:
+                probabilities = self.model.predict_proba(X)[0]
+                predicted_class_idx = self.model.predict(X)[0]
+            predicted_class = str(self.label_encoder.inverse_transform([predicted_class_idx])[0])
+            model_classes = list(self.model.classes_)
+            probability_index = model_classes.index(predicted_class_idx)
+            confidence = float(probabilities[probability_index])
 
         # Map to risk levels
         risk_mapping = {
@@ -240,6 +335,7 @@ class MentalHealthService:
             "score": score,
             "risk_level": risk_level,
             "predicted_class": signal_mapping.get(predicted_class, "general_distress"),
+            "raw_predicted_class": predicted_class,
             "confidence": confidence,
             "recent_messages": recent_messages,
             "rule_score": rule_analysis["score"],
@@ -270,6 +366,12 @@ class MentalHealthService:
             response_mode = "support"
             category = "emotional_distress"
         elif (
+            analysis.get("predicted_class") == "safety_risk"
+            and float(analysis.get("confidence", 0.0) or 0.0) >= 0.35
+        ):
+            response_mode = "crisis"
+            category = "model_detected_safety_concern"
+        elif (
             analysis.get("risk_level") in {"moderate", "high"}
             and float(analysis.get("confidence", 0.0) or 0.0) >= settings.MENTAL_HEALTH_ML_THRESHOLD
         ):
@@ -289,9 +391,20 @@ class MentalHealthService:
         return analysis
 
     def _preprocess_text(self, text: str) -> str:
-        """Preprocess text similar to training."""
-        import re
+        """Preprocess text for feature extraction."""
+        if not self.is_multilingual:
+            return self._preprocess_text_legacy(text)
 
+        # Multilingual normalization: unescape HTML, clean URLs, normalize unicode NFKC
+        text = html.unescape(text)
+        text = re.sub(r"https?://\S+|www\.\S+", " ", text)
+        text = unicodedata.normalize("NFKC", text)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = " ".join(text.split())
+        return text
+
+    def _preprocess_text_legacy(self, text: str) -> str:
+        """Legacy text preprocessing with English lemmatization and stopwords."""
         text = text.lower()
         text = re.sub(r'[^a-zA-Z\s]', '', text)
         words = text.split()
@@ -355,7 +468,7 @@ class MentalHealthService:
                 return "critical"
             if int(analysis.get("rule_score", 0) or 0) >= 18:
                 return "high"
-            if predicted_class == "safety_risk" and confidence >= settings.MENTAL_HEALTH_ML_THRESHOLD:
+            if predicted_class == "safety_risk" and confidence >= 0.35:
                 return "critical"
             if risk_level == "high" and confidence >= 0.9:
                 return "critical"
@@ -378,6 +491,8 @@ class MentalHealthService:
             if analysis.get("high_hits"):
                 return True
             if int(analysis.get("rule_score", 0) or 0) >= 12:
+                return True
+            if analysis.get("predicted_class") == "safety_risk" and float(analysis.get("confidence", 0.0) or 0.0) >= 0.35:
                 return True
             risk_level = analysis.get("risk_level", "normal")
             confidence = analysis.get("confidence", 0.0)
@@ -463,7 +578,8 @@ One-line admin summary:"""
         
         if self.use_ml:
             rule_hits = analysis.get("high_hits", []) + analysis.get("medium_hits", []) + analysis.get("support_hits", [])
-            matched_phrases = f"ML Prediction: {analysis.get('predicted_class', 'Unknown')} (confidence: {analysis.get('confidence', 0.0):.2f})"
+            class_label = analysis.get("raw_predicted_class") or analysis.get("predicted_class", "Unknown")
+            matched_phrases = f"ML Prediction: {class_label} (confidence: {analysis.get('confidence', 0.0):.2f})"
             if rule_hits:
                 matched_phrases = f"{matched_phrases}; Rule hits: {', '.join(rule_hits)}"
         else:

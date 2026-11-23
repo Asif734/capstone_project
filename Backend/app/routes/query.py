@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.orm import Session
 from app.schemas.models import QueryRequest, QueryResponse, SourceDocument
 from app.utils.graph import (
@@ -54,6 +54,7 @@ def evaluate_mental_health_if_needed(
 @router.post("/query", response_model=QueryResponse)
 def query_documents(
     request: QueryRequest,
+    http_request: Request,
     user_token: str | None = Header(default=None, alias="X-User-Token"),
     authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
@@ -62,6 +63,8 @@ def query_documents(
         is_authenticated = False
         user_id = None
         user_reg_id = None
+        token_jti = None
+        client_ip = http_request.client.host if http_request.client else None
 
         bearer_token = extract_bearer_token(authorization)
         if authorization and not bearer_token:
@@ -85,6 +88,7 @@ def query_documents(
             is_authenticated = True
             user_id = payload.get("user_id")
             user_reg_id = payload.get("reg_id")
+            token_jti = payload.get("jti")
 
             requested_private_scope = None
             lowered_question = request.question.lower()
@@ -109,7 +113,7 @@ def query_documents(
             mental_health_assessment=mental_health_assessment,
         )
         cache_question = build_retrieval_question(request.question, conversation_history)
-        response_language = response_language_code(request.question)
+        response_language = response_language_code(request.question, conversation_history)
         if is_public_cacheable_route(route):
             cached = redis_cache_service.get_similar_answer(
                 cache_question,
@@ -143,6 +147,8 @@ def query_documents(
             "route": route,
             "is_authenticated": is_authenticated,
             "user_reg_id": user_reg_id,
+            "token_jti": token_jti,
+            "client_ip": client_ip,
             "top_k": request.top_k,
             "conversation_history": conversation_history,
             "mental_health_assessment": mental_health_assessment,

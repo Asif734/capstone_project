@@ -3,13 +3,18 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.routes.admin import require_admin
 from app.services.embedding import get_embedding
-from app.services.pinecone import store_embeddings
+from app.services.faiss_service import (
+    store_embeddings,
+    get_documents_metadata,
+    get_document_names,
+    delete_document_by_name,
+)
 from app.services.redis_service import redis_cache_service
 from app.utils.preprocess_text import chunk_sections, clean_text, extract_sections
 
@@ -86,3 +91,84 @@ async def upload_file(
         "chunks_stored": stored_count,
         "message": "Document uploaded and indexed successfully",
     }
+
+
+@router.get("/documents", status_code=status.HTTP_200_OK)
+@router.get("/Documents", status_code=status.HTTP_200_OK, include_in_schema=False)
+@router.get("/document-names", status_code=status.HTTP_200_OK, include_in_schema=False)
+@router.get("/documents/names", status_code=status.HTTP_200_OK, include_in_schema=False)
+async def list_documents():
+    """
+    Retrieve all document names and metadata currently stored in the knowledge base.
+    """
+    docs = await run_in_threadpool(get_documents_metadata)
+    names = await run_in_threadpool(get_document_names)
+    return {
+        "documents": docs,
+        "document_names": names,
+        "total_documents": len(docs),
+    }
+
+
+@router.get("/documents/{document_name:path}", status_code=status.HTTP_200_OK)
+async def get_document(document_name: str):
+    """
+    Retrieve details for a single document by its document name or document ID.
+    """
+    docs = await run_in_threadpool(get_documents_metadata)
+    target = document_name.strip().lower()
+    target_stem = Path(target).stem.lower()
+
+    for d in docs:
+        d_name = str(d.get("document_name") or "").lower()
+        d_id = str(d.get("document_id") or "").lower()
+        d_stem = Path(d_name).stem.lower()
+        if (
+            target in (d_name, d_id, d_stem)
+            or d_name in (f"{target}.docx", f"{target}.pdf", f"{target}.txt")
+        ):
+            return {"document": d}
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Document '{document_name}' not found in knowledge base",
+    )
+
+
+@router.delete("/documents", status_code=status.HTTP_200_OK)
+async def delete_document_by_query(
+    document_name: str = Query(..., description="Name or ID of the document to delete"),
+):
+    """
+    Delete a document and all its indexed chunks via query parameter.
+    """
+    return await delete_document(document_name)
+
+
+@router.delete("/documents/{document_name:path}", status_code=status.HTTP_200_OK)
+@router.delete("/document/{document_name:path}", status_code=status.HTTP_200_OK, include_in_schema=False)
+async def delete_document(document_name: str):
+    """
+    Delete a document and all its indexed chunks using the document name or document ID.
+    """
+    if not document_name or not document_name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Document name is required",
+        )
+
+    result = await run_in_threadpool(delete_document_by_name, document_name.strip())
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document '{document_name}' not found in knowledge base",
+        )
+
+    return {
+        "message": f"Document '{result['document_name']}' deleted successfully",
+        "document_name": result["document_name"],
+        "document_id": result["document_id"],
+        "chunks_deleted": result["chunks_deleted"],
+        "remaining_total_chunks": result["remaining_total_chunks"],
+    }
+

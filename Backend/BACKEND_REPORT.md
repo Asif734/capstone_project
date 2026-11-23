@@ -411,21 +411,20 @@ The mental-health service analyzes the most recent messages for the authenticate
 
 ### ML-Based Detection
 
-The primary detector is a saved ML model:
+The primary detector is a tri-lingual trained model bundle:
 
 ```text
-app/services/best_mental_health_model.pkl
-app/services/tfidf_vectorizer.pkl
-app/services/label_encoder.pkl
+models/multilingual_mental_health_model.joblib
 ```
 
 The service loads:
 
-- A LightGBM classifier
-- A TF-IDF vectorizer
-- A label encoder
+- A calibrated SGDClassifier (Logistic Regression with `loss='log_loss'`)
+- A 40,000-dimensional character TF-IDF vectorizer (`char_wb`, n-grams 3–5) for phonetic Banglish and subwords
+- A 30,000-dimensional word TF-IDF vectorizer (n-grams 1–2) for semantic vocabulary across English, Banglish, and Bengali script
+- Fallback capability to legacy LightGBM artifacts (`app/services/best_mental_health_model.pkl`) if needed
 
-The recent user messages are combined into one text string, preprocessed, vectorized with TF-IDF, and classified.
+The recent user messages are combined into one text string, normalized with Unicode NFKC, vectorized across the 70,000-feature hybrid sparse space, and classified.
 
 The model predicts classes such as:
 

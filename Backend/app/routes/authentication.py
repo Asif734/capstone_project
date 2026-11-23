@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Header, status, Request, 
 from sqlalchemy.orm import Session
 
 from app.schemas.authentication import (
+    CONSENT_VERSION,
     SignUpRequest,
     OTPVerifyRequest,
     LoginRequest,
@@ -44,6 +45,7 @@ from app.db.database import (
     create_session,
     record_login_attempt,
     get_otp_email,
+    get_otp_consent,
     get_session_by_token_hash,
 )
 from app.core.config import settings
@@ -79,7 +81,14 @@ def signup(data: SignUpRequest, db: Session = Depends(get_db)):
 
         # Generate and save OTP
         otp = generate_otp()
-        save_otp(data.reg_id, data.email, hash_otp(otp), db, expiry_minutes=10)
+        save_otp(
+            data.reg_id,
+            data.email,
+            hash_otp(otp),
+            db,
+            consent_version=CONSENT_VERSION,
+            expiry_minutes=10,
+        )
         
         # Send OTP email
         send_otp_email(data.email, otp)
@@ -171,9 +180,23 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
                 detail="Registration denied. You are not authorized to sign up."
             )
 
+        consent = get_otp_consent(data.reg_id, db)
+        if not consent:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Consent is required. Please accept the data-use terms and request a new OTP."
+            )
+
         # Hash password and save user
         hashed_pw = hash_password(data.password)
-        user = save_user(data.reg_id, student_email, hashed_pw, db)
+        user = save_user(
+            data.reg_id,
+            student_email,
+            hashed_pw,
+            db,
+            consent_accepted_at=consent[0],
+            consent_version=consent[1],
+        )
 
         # Mark OTP as used
         mark_otp_as_used(data.reg_id, db)

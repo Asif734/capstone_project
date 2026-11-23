@@ -62,5 +62,6 @@ def health_check():
 
 app.include_router(authentication.router, tags=["Authentication"])
 app.include_router(admin.router, tags=["Admin"])
+app.include_router(admin.router, prefix="/api", tags=["Admin (API Alias)"])
 app.include_router(upload_file.router, tags=["Upload file"])
 app.include_router(query.router, tags=["Query"])

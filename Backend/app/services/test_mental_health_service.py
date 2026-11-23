@@ -20,8 +20,37 @@ class MentalHealthServiceTest(unittest.TestCase):
             pass
 
     def test_ml_model_loaded(self):
-        self.assertTrue(self.service.use_ml, "LightGBM should be loaded as the primary detector")
-        self.assertEqual(type(self.service.model).__name__, "LGBMClassifier")
+        self.assertTrue(self.service.use_ml, "Mental health ML model should be loaded")
+        self.assertIn(type(self.service.model).__name__, ["SGDClassifier", "LGBMClassifier"])
+        self.assertTrue(self.service.is_multilingual, "Multilingual model bundle should be active")
+        self.assertGreater(len(self.service.classes), 0)
+
+    def test_multilingual_bangla_distress_detection(self):
+        interactions = [
+            {"question": "আমি সবকিছু নিয়ে খুব ক্লান্ত, মনে হচ্ছে বেঁচে থাকার আর কোনো অর্থ নেই", "answer": ""}
+        ]
+        analysis = self.service.analyze_history(interactions)
+        self.assertIn(analysis["risk_level"], ["high", "moderate"])
+        self.assertTrue(self.service.should_alert(analysis))
+
+    def test_multilingual_banglish_distress_detection(self):
+        interactions = [
+            {"question": "amar khub depression lagche, jibon e sob kichu sesh mone hocche", "answer": ""}
+        ]
+        analysis = self.service.analyze_history(interactions)
+        self.assertIn(analysis["risk_level"], ["high", "moderate"])
+        self.assertTrue(self.service.should_alert(analysis))
+
+    def test_multilingual_normal_queries_stay_safe(self):
+        queries = [
+            "Hey could you tell me where the library is located?",
+            "ajke class er timing ki change hoise dosto?",
+            "আগামীকাল আমাদের প্রেজেন্টেশনের সময় কয়টায়?",
+        ]
+        for q in queries:
+            analysis = self.service.analyze_history([{"question": q, "answer": ""}])
+            self.assertEqual(analysis["risk_level"], "normal", f"Query '{q}' should be classified as normal")
+            self.assertFalse(self.service.should_alert(analysis))
 
     def test_analyze_history_returns_high_risk_for_suicidal_text(self):
         interactions = [

@@ -7,9 +7,13 @@ from app.utils.graph import (
     detect_greeting,
     assistant_identity_response,
     build_retrieval_question,
+    build_contextual_question,
+    clean_llm_output,
     get_greeting_response,
+    is_contextual_follow_up,
     mental_support_agent,
     format_identity_answer,
+    rag_prompt,
     response_language_code,
     response_language_instruction,
     route_question,
@@ -29,6 +33,14 @@ class RouteQuestionTests(unittest.TestCase):
         expanded = build_retrieval_question("Are there specialization courses?", [])
         self.assertIn("degree program", expanded)
         self.assertIn("MBA specialization", expanded)
+
+    def test_masters_program_correction_is_routed_and_expanded(self):
+        question = "bup has masters course"
+        self.assertEqual(route_question(question), "rag")
+        self.assertEqual(
+            build_retrieval_question(question, []),
+            "What master's programs does BUP offer?",
+        )
 
     def test_short_follow_up_keeps_previous_question_for_retrieval(self):
         expanded = build_retrieval_question(
@@ -238,6 +250,176 @@ class RouteQuestionTests(unittest.TestCase):
             "mental_health_assessment": {"response_mode": "crisis"},
         })
         self.assertIn("If you might hurt yourself", result["answer"])
+
+    def test_conversational_reactions_route_to_chat(self):
+        reactions = [
+            "oho, you are too fast",
+            "thanks buddy",
+            "wow awesome",
+            "okay got it",
+            "দারুণ!",
+            "ধন্যবাদ",
+        ]
+        for query in reactions:
+            self.assertEqual(route_question(query), "chat", f"Failed for query: {query}")
+
+    def test_masters_course_inquiry_expands_to_programs(self):
+        expanded = build_retrieval_question(
+            "i want to masters, what are the courses available here?",
+            [],
+        )
+        self.assertEqual(expanded, "What master's programs does BUP offer?")
+
+    def test_language_continuity_for_short_replies(self):
+        bengali_history = [
+            {
+                "question": "আমি সবকিছু নিয়ে খুব ক্লান্ত, মনে হচ্ছে বেঁচে থাকার আর কোনো অর্থ নেই",
+                "answer": "আপনার এমন লাগছে শুনে আমি খুব দুঃখিত—আপনাকে একা এটি সামলাতে হবে না। আপনি কি এখন তাৎক্ষণিক ঝুঁকিতে আছেন?",
+            }
+        ]
+        self.assertEqual(response_language_code("ha", bengali_history), "bn")
+        self.assertIn("Bangla", response_language_instruction("ha", bengali_history))
+        self.assertEqual(response_language_code("ji", bengali_history), "bn")
+
+    def test_affirmative_crisis_follow_up_stays_in_mental_support_and_bangla(self):
+        bengali_crisis_history = [
+            {
+                "question": "আমি আত্মহত্যা করতে চাই",
+                "answer": "আপনার এমন লাগছে শুনে আমি খুব দুঃখিত—আপনাকে একা এটি সামলাতে হবে না। আপনি কি এখন তাৎক্ষণিক ঝুঁকিতে আছেন?",
+            }
+        ]
+        self.assertEqual(
+            route_question("ha", conversation_history=bengali_crisis_history),
+            "mental_support",
+        )
+        result = mental_support_agent({
+            "question": "ha",
+            "conversation_history": bengali_crisis_history,
+            "mental_health_assessment": {"response_mode": "crisis"},
+        })
+        self.assertIn("আপনাকে একা", result["answer"])
+        self.assertIn("৯৯৯", result["answer"])
+
+    def test_clean_llm_output_removes_na_and_fixes_markdown(self):
+        sample = (
+            "<think>Analyzing request...</think>\n"
+            "•\n"
+            "*Master's Degree Programs at Bangladesh University of Professionals (BUP)**\n"
+            "•\n"
+            "**Faculty of Arts & Social Sciences (FASS)**\n"
+            "•\n"
+            "**Master of Development Studies (MDS — Professional)**\n"
+            "+ Type: Professional\n"
+            "+ Schedule: Weekend (Fri & Sat)\n"
+            "+ Duration: 1.5–2 Years\n"
+            "+ Credits: 48\n"
+            "•\n"
+            "**Master of Laws (LLM — Professional)**\n"
+            "+ Type: Professional\n"
+            "+ Schedule: N/A\n"
+            "+ Duration: N/A\n"
+            "+ Credits: N/A\n"
+            "+ Target Audience: N/A\n"
+        )
+        cleaned = clean_llm_output(sample)
+        self.assertNotIn("<think>", cleaned)
+        self.assertNotIn("+ Schedule: N/A", cleaned)
+        self.assertNotIn("+ Duration: N/A", cleaned)
+        self.assertNotIn("+ Credits: N/A", cleaned)
+        self.assertNotIn("+ Target Audience: N/A", cleaned)
+        self.assertIn("**Master's Degree Programs at Bangladesh University of Professionals (BUP)**", cleaned)
+        self.assertIn("**Faculty of Arts & Social Sciences (FASS)**", cleaned)
+        self.assertIn("+ Type: Professional", cleaned)
+        self.assertIn("+ Duration: 1.5–2 Years", cleaned)
+
+    def test_broad_masters_course_inquiries_expand_consistently(self):
+        queries = [
+            "i want to about the masters courses you offer..",
+            "what are the masters courses offer by the bup",
+            "bup has masters course",
+            "what master courses do you have?",
+        ]
+        for q in queries:
+            expanded = build_retrieval_question(q, [])
+            self.assertEqual(
+                expanded,
+                "What master's programs does BUP offer?",
+                f"Failed for query: {q}",
+            )
+
+    def test_contextual_discipline_follow_up_routing_and_expansion(self):
+        masters_history = [
+            {
+                "question": "what are the masters courses offer by the bup",
+                "answer": "BUP offers over 20+ Master's degree programs across 5 faculties. Which academic field interests you?",
+            }
+        ]
+        # Follow-up "business" should route to rag when history is present
+        self.assertTrue(is_contextual_follow_up("business", masters_history))
+        self.assertEqual(route_question("business", conversation_history=masters_history), "rag")
+
+        # Expansion should maintain context and specify Master's degree program
+        expanded = build_retrieval_question("business", masters_history)
+        self.assertIn("what are the masters courses offer by the bup", expanded)
+        self.assertIn("BUP Master's degree program in business", expanded)
+
+        # Similarly for "computer science"
+        self.assertTrue(is_contextual_follow_up("computer science", masters_history))
+        expanded_cs = build_retrieval_question("computer science", masters_history)
+        self.assertIn("BUP Master's degree program in computer science", expanded_cs)
+
+    def test_rag_prompt_contains_advisor_triage_guidelines(self):
+        template = rag_prompt.template
+        self.assertIn("20+ Master's degree programs across 5 faculties", template)
+        self.assertIn("NO SPEC SHEET DUMPING", template)
+        self.assertIn("STRICT BAN ON \"N/A\"", template)
+        self.assertIn("MANDATORY CLARIFICATION QUESTION", template)
+        self.assertIn("Which academic field or faculty interests you most", template)
+
+    def test_undergraduate_and_phd_course_inquiries_expansion(self):
+        ug_queries = [
+            "what are the bachelor courses offered by bup?",
+            "undergraduate programs in bup",
+            "bup er bachelor courses ki ki?",
+            "bachelor degree programs at bup",
+        ]
+        for q in ug_queries:
+            expanded = build_retrieval_question(q, [])
+            self.assertEqual(
+                expanded,
+                "What undergraduate bachelor degree programs does BUP offer?",
+                f"Failed for query: {q}",
+            )
+
+        phd_queries = [
+            "what mphil or phd programs does bup offer?",
+            "phd courses in bup",
+            "available phd programs",
+        ]
+        for q in phd_queries:
+            expanded = build_retrieval_question(q, [])
+            self.assertEqual(
+                expanded,
+                "What MPhil and PhD research degree programs does BUP offer?",
+                f"Failed for query: {q}",
+            )
+
+    def test_language_enforcement_for_english_banglish_and_bengali(self):
+        # English queries -> 'en' response in English
+        self.assertEqual(response_language_code("what are the masters courses in bup?"), "en")
+        self.assertIn("fluent English", response_language_instruction("what are the masters courses in bup?"))
+
+        # Banglish queries -> 'en' response in English (no Banglish mirroring)
+        self.assertEqual(response_language_code("bup er masters course gulo ki ki?"), "en")
+        self.assertIn("fluent English", response_language_instruction("bup er masters course gulo ki ki?"))
+        self.assertEqual(response_language_code("amar masters kora dorkar kon subject ache"), "en")
+        self.assertIn("fluent English", response_language_instruction("amar masters kora dorkar kon subject ache"))
+
+        # Bengali queries (in Bengali script) -> 'bn' response in Bengali
+        self.assertEqual(response_language_code("বিউপি তে কি কি মাস্টার্স কোর্স আছে?"), "bn")
+        self.assertIn("Bangla using Bengali script", response_language_instruction("বিউপি তে কি কি মাস্টার্স কোর্স আছে?"))
+        self.assertEqual(response_language_code("মাস্টার্স কোর্সের তালিকা দিন"), "bn")
+        self.assertIn("Bangla using Bengali script", response_language_instruction("মাস্টার্স কোর্সের তালিকা দিন"))
 
 
 if __name__ == "__main__":

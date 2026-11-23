@@ -88,7 +88,7 @@
 
 // API Base URL - FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 60000);
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 180000); // 3 minutes timeout for local LLM inference
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {

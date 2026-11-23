@@ -24,6 +24,7 @@ app/db/Combined Data.csv
 fine_tuned_distilbert/
 student_db.db
 chat_memory.json
+faiss_index/
 app/db/private.json
 app/db/students.json
 app/db/otp.json

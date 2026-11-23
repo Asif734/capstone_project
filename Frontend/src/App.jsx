@@ -159,7 +159,7 @@ function App() {
         />
       ) : (
         <>
-          <ChatArea messages={messages} />
+          <ChatArea messages={messages} onSendMessage={handleSendMessage} isSending={isSending} />
           <MessageInput onSendMessage={handleSendMessage} isSending={isSending} />
         </>
       )}

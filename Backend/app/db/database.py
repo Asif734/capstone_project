@@ -1,7 +1,7 @@
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from app.db.sqldb import SessionLocal
-from app.db.student_tables import AuthorizedUser, User, OTP, Session as DBSession, LoginHistory, MentalHealthAlert, StudentCourse, CGPARecord, FinancialRecord, AcademicRecord
+from app.db.student_tables import AuthorizedUser, User, OTP, Session as DBSession, LoginHistory, MentalHealthAlert, StudentCourse, CGPARecord, FinancialRecord, AcademicRecord, AccessAuditLog
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -25,31 +25,41 @@ def ensure_schema_migrations(db: Session):
     """Apply lightweight SQLite-safe schema updates for existing local DBs."""
     inspector = inspect(db.bind)
     table_names = inspector.get_table_names()
-    if "mental_health_alerts" not in table_names:
-        return
-
-    existing_columns = {
-        column["name"]
-        for column in inspector.get_columns("mental_health_alerts")
-    }
     migrations = {
-        "predicted_class": "ALTER TABLE mental_health_alerts ADD COLUMN predicted_class VARCHAR",
-        "confidence": "ALTER TABLE mental_health_alerts ADD COLUMN confidence FLOAT",
-        "summary": "ALTER TABLE mental_health_alerts ADD COLUMN summary TEXT",
-        "status": "ALTER TABLE mental_health_alerts ADD COLUMN status VARCHAR DEFAULT 'new'",
-        "admin_notes": "ALTER TABLE mental_health_alerts ADD COLUMN admin_notes TEXT",
-        "reviewed_at": "ALTER TABLE mental_health_alerts ADD COLUMN reviewed_at DATETIME",
-        "closed_at": "ALTER TABLE mental_health_alerts ADD COLUMN closed_at DATETIME",
+        "mental_health_alerts": {
+            "predicted_class": "ALTER TABLE mental_health_alerts ADD COLUMN predicted_class VARCHAR",
+            "confidence": "ALTER TABLE mental_health_alerts ADD COLUMN confidence FLOAT",
+            "summary": "ALTER TABLE mental_health_alerts ADD COLUMN summary TEXT",
+            "status": "ALTER TABLE mental_health_alerts ADD COLUMN status VARCHAR DEFAULT 'new'",
+            "admin_notes": "ALTER TABLE mental_health_alerts ADD COLUMN admin_notes TEXT",
+            "reviewed_at": "ALTER TABLE mental_health_alerts ADD COLUMN reviewed_at DATETIME",
+            "closed_at": "ALTER TABLE mental_health_alerts ADD COLUMN closed_at DATETIME",
+        },
+        "users": {
+            "consent_accepted_at": "ALTER TABLE users ADD COLUMN consent_accepted_at DATETIME",
+            "consent_version": "ALTER TABLE users ADD COLUMN consent_version VARCHAR",
+        },
+        "otps": {
+            "consent_accepted_at": "ALTER TABLE otps ADD COLUMN consent_accepted_at DATETIME",
+            "consent_version": "ALTER TABLE otps ADD COLUMN consent_version VARCHAR",
+        },
     }
 
     changed = False
-    for column_name, statement in migrations.items():
-        if column_name not in existing_columns:
-            db.execute(text(statement))
-            changed = True
+    for table_name, table_migrations in migrations.items():
+        if table_name not in table_names:
+            continue
+        existing_columns = {
+            column["name"] for column in inspector.get_columns(table_name)
+        }
+        for column_name, statement in table_migrations.items():
+            if column_name not in existing_columns:
+                db.execute(text(statement))
+                changed = True
 
     if changed:
-        db.execute(text("UPDATE mental_health_alerts SET status = 'new' WHERE status IS NULL"))
+        if "mental_health_alerts" in table_names:
+            db.execute(text("UPDATE mental_health_alerts SET status = 'new' WHERE status IS NULL"))
         db.commit()
 
 
@@ -106,13 +116,22 @@ def get_user_by_email(email: str, db: Session) -> User | None:
     return db.query(User).filter(User.email == email).first()
 
 
-def save_user(reg_id: str, email: str, password_hash: str, db: Session) -> User:
+def save_user(
+    reg_id: str,
+    email: str,
+    password_hash: str,
+    db: Session,
+    consent_accepted_at: datetime,
+    consent_version: str,
+) -> User:
     """Create a new verified user"""
     user = User(
         reg_id=reg_id,
         email=email,
         password_hash=password_hash,
-        is_verified=True
+        is_verified=True,
+        consent_accepted_at=consent_accepted_at,
+        consent_version=consent_version,
     )
     db.add(user)
     db.commit()
@@ -172,7 +191,14 @@ def deactivate_user(user_id: int, db: Session):
 
 
 # ========== OTP MANAGEMENT ==========
-def save_otp(reg_id: str, email: str, otp: str, db: Session, expiry_minutes: int = 10):
+def save_otp(
+    reg_id: str,
+    email: str,
+    otp: str,
+    db: Session,
+    consent_version: str,
+    expiry_minutes: int = 10,
+):
     """Save OTP with expiration"""
     # Delete existing OTP
     db.query(OTP).filter(OTP.reg_id == reg_id).delete()
@@ -182,7 +208,9 @@ def save_otp(reg_id: str, email: str, otp: str, db: Session, expiry_minutes: int
         reg_id=reg_id,
         email=email,
         otp=otp,
-        expires_at=datetime.utcnow() + timedelta(minutes=expiry_minutes)
+        expires_at=datetime.utcnow() + timedelta(minutes=expiry_minutes),
+        consent_accepted_at=datetime.utcnow(),
+        consent_version=consent_version,
     )
     db.add(new_otp)
     db.commit()
@@ -210,6 +238,20 @@ def get_otp_email(reg_id: str, db: Session) -> str | None:
     if record.expires_at < datetime.utcnow():
         return None
     return record.email
+
+
+def get_otp_consent(reg_id: str, db: Session) -> tuple[datetime, str] | None:
+    """Return consent evidence from a valid, pending OTP."""
+    record = db.query(OTP).filter(OTP.reg_id == reg_id).first()
+    if (
+        not record
+        or record.is_used
+        or record.expires_at < datetime.utcnow()
+        or not record.consent_accepted_at
+        or not record.consent_version
+    ):
+        return None
+    return record.consent_accepted_at, record.consent_version
 
 
 def increment_otp_attempts(reg_id: str, db: Session) -> int:
@@ -327,6 +369,20 @@ def save_mental_health_alert(
     db.add(alert)
     db.commit()
     db.refresh(alert)
+
+    try:
+        from app.services.audit_service import log_data_access_sync
+        log_data_access_sync(
+            agent_node="mental_health_agent",
+            action_type="COUNSELOR_ALERT_CREATED",
+            auth_status="AUTHORIZED",
+            actor_student_id=str(reg_id) if reg_id else None,
+            target_student_id=str(reg_id) if reg_id else None,
+            db=db,
+        )
+    except Exception:
+        pass
+
     return alert
 
 

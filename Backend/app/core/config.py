@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(ENV_FILE)
 load_dotenv()
@@ -10,6 +13,7 @@ class Settings:
     APP_ENV = os.getenv("APP_ENV", "development").lower()
 
     INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "multilingual-text")
+    FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "faiss_index")
     EMBEDDING_MODEL = os.getenv(
         "EMBEDDING_MODEL",
         "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
@@ -22,7 +26,7 @@ class Settings:
     LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
     OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
     OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "1024"))
-    OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
+    OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
 
     DATABASE_URL = os.getenv("DATABASE_URL")
     DATABASE_ECHO = os.getenv("DATABASE_ECHO", "false").lower() == "true"
@@ -34,18 +38,23 @@ class Settings:
         origin.strip().rstrip("/")
         for origin in os.getenv(
             "CORS_ORIGINS",
-            "https://bup-chat.vercel.app,http://localhost:3000,http://localhost:5173,http://localhost:3001",
+            "https://bup-chat.vercel.app,http://localhost:3000,http://localhost:5173,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:3001,http://localhost:5174,http://127.0.0.1:5174",
         ).split(",")
         if origin.strip()
     )
     MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
     MAX_DOCUMENT_PAGES = int(os.getenv("MAX_DOCUMENT_PAGES", "200"))
-    PINECONE_DIMENSION = int(os.getenv("PINECONE_DIMENSION", "384"))
+    VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", os.getenv("PINECONE_DIMENSION", "384")))
+    PINECONE_DIMENSION = VECTOR_DIMENSION
     PINECONE_CLOUD = os.getenv("PINECONE_CLOUD", "aws")
     PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
     PINECONE_UPSERT_BATCH_SIZE = int(os.getenv("PINECONE_UPSERT_BATCH_SIZE", "100"))
     RAG_SCORE_THRESHOLD = float(os.getenv("RAG_SCORE_THRESHOLD", "0.35"))
     MENTAL_HEALTH_ML_THRESHOLD = float(os.getenv("MENTAL_HEALTH_ML_THRESHOLD", "0.45"))
+    MULTILINGUAL_MENTAL_HEALTH_MODEL_PATH = os.getenv(
+        "MULTILINGUAL_MENTAL_HEALTH_MODEL_PATH",
+        "models/multilingual_mental_health_model.joblib",
+    )
     SEED_LOCAL_DATA = os.getenv(
         "SEED_LOCAL_DATA", "true" if APP_ENV == "development" else "false"
     ).lower() == "true"
@@ -86,13 +95,7 @@ class Settings:
 
     @property
     def pinecone_client(self):
-        if not self.PINECONE_API_KEY:
-            raise ValueError("PINECONE_API_KEY is not configured")
-        try:
-            from pinecone import Pinecone
-        except ImportError as exc:
-            raise ImportError("pinecone package is required for Pinecone client") from exc
-        return Pinecone(api_key=self.PINECONE_API_KEY)
+        return None
 
     def validate_startup(self) -> None:
         missing = []
@@ -119,8 +122,6 @@ class Settings:
             missing.append("REQUIRE_EMAIL_DELIVERY=true")
         elif not self.SMTP_HOST or not self.SMTP_FROM_EMAIL:
             missing.append("SMTP_HOST and SMTP_FROM_EMAIL")
-        if not self.PINECONE_API_KEY:
-            missing.append("PINECONE_API_KEY")
         if not self.DATABASE_URL:
             missing.append("DATABASE_URL")
         if not self.CORS_ORIGINS or "*" in self.CORS_ORIGINS:
@@ -138,8 +139,8 @@ class Settings:
             raise RuntimeError("CHAT_MEMORY_BACKEND must be 'json' or 'database'")
         if self.CHAT_MEMORY_MAX_INTERACTIONS <= 0:
             raise RuntimeError("CHAT_MEMORY_MAX_INTERACTIONS must be positive")
-        if self.PINECONE_DIMENSION <= 0 or self.PINECONE_UPSERT_BATCH_SIZE <= 0:
-            raise RuntimeError("Pinecone dimension and batch size must be positive")
+        if self.VECTOR_DIMENSION <= 0:
+            raise RuntimeError("Vector dimension must be positive")
         if not 0 <= self.RAG_SCORE_THRESHOLD <= 1:
             raise RuntimeError("RAG_SCORE_THRESHOLD must be between 0 and 1")
         if not 0 <= self.MENTAL_HEALTH_ML_THRESHOLD <= 1:
