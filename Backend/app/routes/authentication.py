@@ -34,6 +34,7 @@ from app.db.database import (
     delete_otp,
     save_user,
     get_user_by_reg_id,
+    get_user_by_email,
     get_user_by_id,
     user_exists,
     update_last_login,
@@ -77,6 +78,11 @@ def signup(data: SignUpRequest, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User already registered. Please log in or use password reset."
+            )
+        if get_user_by_email(data.email, db):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email is already registered. Please log in or use password reset."
             )
 
         # Generate and save OTP
@@ -178,6 +184,11 @@ def verify_otp(data: OTPVerifyRequest, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registration denied. You are not authorized to sign up."
+            )
+        if get_user_by_email(student_email, db):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email is already registered. Please log in or use password reset."
             )
 
         consent = get_otp_consent(data.reg_id, db)

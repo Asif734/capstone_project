@@ -117,10 +117,11 @@ def get_greeting_response(q: str, conversation_history: List[dict] | None = None
 
 STUDENT_RECORD_PATTERN = re.compile(
     r"\b("
-    r"name|marks?|grades?|cgpa|cggpa|gpa|fees?|dues?|payment|semester|registration|"
-    r"student\s*id|result|transcript|profile|record|attendance|department|email|courses?"
+    r"name|marks?|grades?|cgpa|cggpa|sgpa|gpa|fees?|dues?|payment|tuition|paid|waiver|"
+    r"credits?|semester|registration|student\s*id|result|transcript|profile|record|"
+    r"attendance|department|faculty|program|batch|advisor|standing|graduation|email|courses?"
     r")\b|"
-    r"নাম|মার্ক|গ্রেড|সিজিপিএ|জিপিএ|ফি|সেমিস্টার|রেজিস্ট্রেশন|আইডি|রেজাল্ট|"
+    r"নাম|মার্ক|গ্রেড|সিজিপিএ|জিপিএ|ফি|বকেয়া|বেতন|ক্রেডিট|সেমিস্টার|রেজিস্ট্রেশন|আইডি|রেজাল্ট|"
     r"ট্রান্সক্রিপ্ট|প্রোফাইল|রেকর্ড|উপস্থিতি|বিভাগ|ডিপার্টমেন্ট|ইমেইল",
     re.IGNORECASE,
 )
@@ -157,6 +158,8 @@ ASSISTANT_ROLE_PATTERN = re.compile(
 ADMISSION_TERMS = [
     "admission",
     "admissions",
+    "admit",
+    "admitted",
     "apply",
     "application",
     "eligibility",
@@ -167,14 +170,44 @@ ADMISSION_TERMS = [
 
 PROGRAM_LEVEL_TERMS = [
     "undergraduate",
+    "undergradute",
+    "undegraduate",
+    "undergrad",
     "bachelor",
+    "bachelors",
     "bba",
     "bss",
+    "bsc",
+    "ba",
+    "llb",
     "honours",
     "honors",
+    "hons",
+    "12th",
+    "12th pass",
+    "12 pass",
+    "class 12",
+    "12 completed",
+    "passed 12",
+    "after 12",
+    "after 12th",
+    "hsc",
+    "a level",
+    "a levels",
+    "a-level",
+    "a-levels",
+    "intermediate",
+    "higher secondary",
+    "alim",
     "masters",
     "master",
     "msc",
+    "postgraduate",
+    "post-graduate",
+    "postgrad",
+    "mba",
+    "emba",
+    "mds",
     "mphil",
     "phd",
     "doctoral",
@@ -202,10 +235,16 @@ PROGRAM_DISCIPLINE_TERMS = [
     "fst",
     "cse",
     "computer science",
+    "artificial intelligence",
+    "machine learning",
+    "data science",
+    "software engineering",
     "cyber security",
+    "cybersecurity",
     "ice",
     "ict",
     "environmental science",
+    "science",
     "mes",
     "mesm",
     "fsss",
@@ -224,6 +263,13 @@ PROGRAM_DISCIPLINE_TERMS = [
     "medical",
     "food",
     "nutrition",
+    "arts",
+    "commerce",
+    "humanities",
+    "general",
+    "বিজ্ঞান",
+    "বাণিজ্য",
+    "মানবিক",
     "weekend",
     "regular",
     "professional",
@@ -243,9 +289,17 @@ CRISIS_TERMS = [
     "suicidal",
     "can't continue",
     "cannot continue",
+    "bachte chai na",
+    "bachte iccha",
+    "bachte mon",
+    "morar iccha",
+    "morte iccha",
+    "bachte parbo na",
     "মরতে চাই",
     "বাঁচতে চাই না",
+    "বাঁচতে ইচ্ছা",
     "বাচতে চাই না",
+    "বেঁচে থাকতে ইচ্ছা",
     "আত্মহত্যা",
     "জীবন শেষ",
     "বেঁচে থাকার আর কোনো অর্থ নেই",
@@ -302,6 +356,29 @@ SUPPORT_TERMS = [
     "depressed lagche",
     "stress lagche",
     "tension hocche",
+    "chere dibo",
+    "chere dewa",
+    "chere dite",
+    "porashona chere",
+    "poralekha chere",
+    "study chere",
+    "pora chere",
+    "semester drop",
+    "drop dewa",
+    "drop dibo",
+    "drop debo",
+    "drop out",
+    "drop ucit",
+    "drop deya",
+    "drop korte chai",
+    "quit study",
+    "quit studying",
+    "give up",
+    "leave university",
+    "result kharap",
+    "onek kharap",
+    "kharap hoise",
+    "kharap hoyeche",
     # Bengali script distress terms
     "ভালো লাগে না",
     "ভালো লাগছে না",
@@ -320,27 +397,49 @@ SUPPORT_TERMS = [
     "মন খারাপ",
     "কষ্ট হচ্ছে",
     "হতাশ লাগছে",
+    "সেমিস্টার ড্রপ",
+    "ড্রপ দেওয়া",
+    "ড্রপ করা",
+    "ড্রপ করতে চাই",
+    "ছেড়ে দেওয়া",
+    "ছেড়ে দিব",
+    "ছেড়ে দেব",
+    "ছেড়ে দিতে",
+    "পড়াশোনা ছেড়ে",
+    "পড়াশোনা ছেড়ে",
+    "পড়া ছেড়ে",
+    "মানসিক চাপ",
+    "চাপ লাগছে",
+    "চালিয়ে যেতে পারব না",
+    "চালিয়ে যেতে পারব না",
+    "চালিয়ে যেতে পারছি না",
+    "চালাতে পারব না",
+    "আর পারছি না",
+    "মন খারাপ",
+    "খারাপ হইছে",
+    "খারাপ হয়েছে",
 ]
 
 ACADEMIC_WORRY_PATTERN = re.compile(
     r"\b("
     r"not going well|worried|worry|afraid|scared|tense|tension|panic|upset|sad|bad|worse|fail|failed|"
     r"can't stay positive|cant stay positive|mon bose na|porte chai na|porte parchi na|"
-    r"vebe pacchi na|valo lage na|stress|frustrated"
+    r"vebe pacchi na|valo lage na|stress|frustrated|kharap|baje|chere|drop|quit|give up|hopeless"
     r")\b.*\b("
     r"academic|academics|study|studies|result|results|marks?|grades?|cgpa|gpa|exam|exams|semester|"
-    r"porashona|porashunai|pora|porte"
+    r"porashona|porashunai|poralekha|pora|porte|class"
     r")\b|"
     r"\b("
     r"academic|academics|study|studies|result|results|marks?|grades?|cgpa|gpa|exam|exams|semester|"
-    r"porashona|porashunai|pora|porte"
+    r"porashona|porashunai|poralekha|pora|porte|class"
     r")\b.*\b("
     r"not going well|worried|worry|afraid|scared|tense|tension|panic|upset|sad|bad|worse|fail|failed|"
     r"can't stay positive|cant stay positive|mon bose na|porte chai na|porte parchi na|"
-    r"vebe pacchi na|valo lage na|stress|frustrated"
+    r"vebe pacchi na|valo lage na|stress|frustrated|kharap|baje|chere|drop|quit|give up|hopeless"
     r")\b|"
-    r"(?:পড়াশোনা|পড়াশোনায়|পড়ায়|পরীক্ষা|পরীক্ষায়|রেজাল্ট|সিজিপিএ).*(?:মন বসে না|ভালো লাগে না|ভয় লাগছে|খারাপ|চিন্তা|হতাশ|টেনশন)|"
-    r"(?:মন বসে না|ভালো লাগে না|ভয় লাগছে|খারাপ|চিন্তা|হতাশ|টেনশন).*(?:পড়াশোনা|পড়াশোনায়|পড়ায়|পরীক্ষা|পরীক্ষায়|রেজাল্ট|সিজিপিএ)",
+    r"\b(semester\s+drop|drop\s+dewa|drop\s+dibo|drop\s+debo|drop\s+out|drop\s+semester|chere\s+dibo|chere\s+dewa|chere\s+dite|poralekha\s+chere|porashona\s+chere|quit\s+study|quit\s+studying|give\s+up\s+on\s+studies|সেমিস্টার\s+ড্রপ|ছেড়ে\s+দিব|ছেড়ে\s+দেওয়া)\b|"
+    r"(?:পড়াশোনা|পড়াশোনায়|পড়ায়|পরীক্ষা|পরীক্ষায়|রেজাল্ট|সিজিপিএ|সেমিস্টার).*(?:মন বসে না|ভালো লাগে না|ভয় লাগছে|খারাপ|চিন্তা|হতাশ|টেনশন|ড্রপ|ছেড়ে)|"
+    r"(?:মন বসে না|ভালো লাগে না|ভয় লাগছে|খারাপ|চিন্তা|হতাশ|টেনশন|ড্রপ|ছেড়ে).*(?:পড়াশোনা|পড়াশোনায়|পড়ায়|পরীক্ষা|পরীক্ষায়|রেজাল্ট|সিজিপিএ|সেমিস্টার)",
     re.IGNORECASE,
 )
 
@@ -349,23 +448,55 @@ def has_identity_intent(q: str) -> bool:
     return bool(IDENTITY_INTENT_PATTERN.search(q))
 
 
-def has_private_data_intent(q: str) -> bool:
-    asks_about_record = bool(STUDENT_RECORD_PATTERN.search(q))
-    mentions_student_id = bool(re.search(r"\b\d{6,}\b", q))
+def has_private_data_intent(q: str, conversation_history: List[dict] | None = None) -> bool:
+    clean_q = q.lower().strip()
+    asks_about_record = bool(STUDENT_RECORD_PATTERN.search(clean_q))
+    mentions_student_id = bool(re.search(r"\b\d{6,}\b", clean_q))
     if mentions_student_id and asks_about_record:
         return True
 
     strong_private_record = re.search(
-        r"\b(my|mine|amar)\s+(?:current\s+)?(marks?|grades?|cgpa|gpa|fees?|dues?|"
-        r"payments?|results?|transcript|profile|record|attendance|email|courses?|semester|"
-        r"department)\b|"
-        r"\b(what|which|show|tell)\b.*\b(courses?|semester|department)\b.*"
-        r"\b(am i|i am)\b.*\b(enrolled|registered|taking|in)\b|"
-        r"আমার.*(মার্ক|গ্রেড|সিজিপিএ|জিপিএ|ফি|সেমিস্টার|রেজাল্ট|রেকর্ড|কোর্স)",
-        q,
+        r"\b(my|mine|amar|amr)\s+(?:(?:current|total|cumulative|overall|pending|academic|expected|first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th|last|previous)\s+)?"
+        r"(marks?|grades?|cgpa|sgpa|gpa|fees?|dues?|due\s+amount|pending\s+fees?|"
+        r"payments?|tuition|waiver|credits?|results?|transcript|profile|record|"
+        r"attendance|email|courses?|semester|department|faculty|program|batch|advisor|standing|graduation)\b|"
+        r"\b(my\s+friend(?:'s)?|friend(?:'s)?|classmate(?:'s)?|someone(?:'s)?)\b.*\b(cgpa|sgpa|gpa|marks?|grades?|fees?|dues?|result|transcript|record)\b|"
+        r"\b(what|which|show|tell)\b.*\b(courses?|semester|department|faculty|program|batch|advisor|cgpa|due|fees?)\b.*"
+        r"\b(am i|i am|do i|have i|my)\b|"
+        r"আমার.*(মার্ক|গ্রেড|সিজিপিএ|জিপিএ|ফি|বকেয়া|ক্রেডিট|সেমিস্টার|রেজাল্ট|রেকর্ড|কোর্স|উপস্থিতি)",
+        clean_q,
         re.IGNORECASE,
     )
-    return bool(strong_private_record)
+    if strong_private_record:
+        return True
+
+    # First-person financial / dues / pending fee inquiries
+    due_pattern = re.search(
+        r"\b(?:do i have|is there|have i|any)\s+(?:any\s+)?(?:dues?|pending fees?|outstanding|balance|payments?)\b|"
+        r"\b(?:due|dues|baki)\s+(?:left|remaining|pending|amount)\b|"
+        r"\b(?:amar|amr)\s+(?:kono\s+)?(?:due|baki|fee|taka)\b|"
+        r"\b(?:kono\s+)?(?:due|baki)\s+(?:ache|achi)\b",
+        clean_q,
+        re.IGNORECASE,
+    )
+    if due_pattern:
+        return True
+
+    # Contextual continuation of private student records
+    if conversation_history:
+        recent_text = " ".join(
+            (item.get("question", "") + " " + item.get("answer", "")).lower()
+            for item in conversation_history[-2:]
+        )
+        has_student_context = any(
+            term in recent_text
+            for term in ["cgpa", "semester 1", "semester 2", "your name is", "student records", "tuition fee", "due amount"]
+        )
+        if has_student_context:
+            if re.search(r"\b(other|next|previous|2nd|second)\s+semester\b|\b(?:how much|amount|credits?)\b", clean_q):
+                return True
+
+    return False
 
 
 def is_bangla(text: str) -> bool:
@@ -489,6 +620,11 @@ def is_support_follow_up(q: str, conversation_history: List[dict] | None = None)
             "reach out for support",
             "bothering you",
             "unwell",
+            "overwhelmed",
+            "disappointment",
+            "feeling a bit stuck",
+            "academic journey",
+            "stress or concern",
             "কঠিন লাগছে",
             "মন খারাপ",
             "পড়াশোনায় মন",
@@ -506,10 +642,10 @@ def is_support_follow_up(q: str, conversation_history: List[dict] | None = None)
 
     # If the user is asking an explicit new BUP administrative or program question, route normally
     is_new_academic_query = bool(re.search(
-        r"\b(admission|masters|bachelor|vice chancellor|vc|fees?|cgpa|grade|routine|syllabus|faculty of)\b",
+        r"\b(admission|masters|bachelor|vice chancellor|vc|routine|syllabus|faculty of)\b",
         q.lower(),
     ))
-    if is_new_academic_query:
+    if is_new_academic_query or has_identity_intent(q) or has_private_data_intent(q, conversation_history):
         return False
 
     clean_q = q.strip(" ?.!").lower()
@@ -527,14 +663,16 @@ def is_support_follow_up(q: str, conversation_history: List[dict] | None = None)
             "vebe pacchi na", "mon bose na", "porte chai na", "valo lage na",
             "bhalo lagche na", "kosto", "stress", "tension", "sad", "hopeless",
             "tired", "pressure", "parchi na", "ki korbo", "kichu bhalo lagena",
+            "drop", "chere", "quit", "leave", "give up", "ucit", "should i",
+            "amar ki", "advice", "suggest", "opinion", "solution", "help",
             "ভেবে পাচ্ছি না", "মন বসে না", "পড়তে চাই না", "ভালো লাগে না",
-            "কষ্ট", "হতাশ", "কী করব",
+            "কষ্ট", "হতাশ", "কী করব", "ড্রপ", "ছেড়ে", "উচিত",
         ]
     )
     if has_emotional_continuation:
         return True
 
-    return len(q.split()) <= 4
+    return len(q.split()) <= 6
 
 
 def is_broad_admission_question(q: str, conversation_history: List[dict] | None = None) -> bool:
@@ -547,12 +685,19 @@ def is_broad_admission_question(q: str, conversation_history: List[dict] | None 
         return False
     if has_specific_level or has_specific_program:
         return False
+    if any(term in q for term in ["criteria", "process", "procedure", "system", "how to", "prokriya", "পদ্ধতি", "নিয়ম", "কীভাবে"]):
+        return False
+    if any(re.search(rf"\b{re.escape(term)}\b", q) for term in PROGRAM_DISCIPLINE_TERMS):
+        return False
 
     recent_assistant_text = " ".join(
         item.get("answer", "").lower()
         for item in (conversation_history or [])[-3:]
     )
-    if "which level" in recent_assistant_text or "undergraduate" in recent_assistant_text:
+    if any(
+        marker in recent_assistant_text
+        for marker in ("which level", "undergraduate", "program level", "computer science", "b.sc", "bba", "master's")
+    ):
         return False
 
     return True
@@ -560,9 +705,11 @@ def is_broad_admission_question(q: str, conversation_history: List[dict] | None 
 
 def is_contextual_follow_up(q: str, conversation_history: List[dict] | None = None) -> bool:
     words = q.split()
-    if len(words) > 6:
+    if len(words) > 8:
         return False
-    if any(term in q for term in PROGRAM_LEVEL_TERMS + ["yes", "that one", "the first", "the second", "the third"]):
+    if any(term in q for term in PROGRAM_LEVEL_TERMS + [
+        "yes", "that one", "the first", "the second", "the third", "1", "2", "3"
+    ]):
         return True
     if conversation_history and any(term in q for term in PROGRAM_DISCIPLINE_TERMS):
         return True
@@ -594,21 +741,46 @@ def build_contextual_question(question: str, history: List[dict] | None) -> str:
         f"{item.get('question', '')} {item.get('answer', '')}".lower()
         for item in history[-4:]
     )
-    if any(term in recent_text for term in ADMISSION_TERMS + ["which level", "mphil", "phd"]):
-        return f"BUP admission details for {question}"
+
+    is_ug_context = (
+        any(term in q for term in [
+            "undergraduate", "undergradute", "undegraduate", "undergrad",
+            "bachelor", "bachelors", "bba", "bsc", "honours", "honors", "hons",
+            "12th", "class 12", "12 completed", "passed 12", "after 12", "hsc", "a level", "a-level"
+        ])
+        or any(term in recent_text for term in ["undergraduate", "bachelor", "bba", "bsc", "honours"])
+        or (q in {"1", "the first", "first"} and "1. undergraduate" in recent_text)
+    )
+
+    is_grad_context = (
+        any(term in q for term in ["master's", "masters", "postgraduate", "mds", "mba", "llm", "mcse", "msc"])
+        or any(term in recent_text for term in ["master's", "masters", "postgraduate", "mds", "mba", "llm", "mcse"])
+        or (q in {"2", "the second", "second"} and "2. master's" in recent_text)
+    )
 
     previous_question = next(
         (item.get("question", "").strip() for item in reversed(history) if item.get("question")),
         "",
     )
 
-    if any(term in recent_text for term in ["master's", "masters", "postgraduate", "mds", "mba", "llm", "mcse"]):
+    if is_ug_context and not is_grad_context:
+        if any(term in q for term in ["science", "বিজ্ঞান"]) and not any(
+            spec in q for spec in ("computer science", "environmental science", "data science")
+        ):
+            return "What undergraduate bachelor degree programs are offered for science background students at BUP?"
+        if q in {"1", "the first", "first", "undergraduate", "undergradute", "undegraduate", "undergrad", "bachelor"}:
+            return "What undergraduate bachelor degree programs does BUP offer?"
+        target = f"BUP undergraduate bachelor degree program in {question}"
+        return f"{previous_question}\nFollow-up: {target}" if previous_question else target
+
+    if is_grad_context and not is_ug_context:
+        if q in {"2", "the second", "second", "master's", "masters", "postgraduate"}:
+            return "What master's programs does BUP offer?"
         target = f"BUP Master's degree program in {question}"
         return f"{previous_question}\nFollow-up: {target}" if previous_question else target
 
-    if any(term in recent_text for term in ["undergraduate", "bachelor", "bba", "bsc", "honours"]):
-        target = f"BUP undergraduate bachelor degree program in {question}"
-        return f"{previous_question}\nFollow-up: {target}" if previous_question else target
+    if any(term in recent_text for term in ADMISSION_TERMS + ["which level", "mphil", "phd", "program level"]):
+        return f"BUP admission details for {question}"
 
     return question
 
@@ -616,7 +788,13 @@ def build_contextual_question(question: str, history: List[dict] | None) -> str:
 def build_retrieval_question(question: str, history: List[dict] | None) -> str:
     """Expand ambiguous academic terminology while preserving the user's intent."""
     normalized = question.lower()
-    if re.search(
+    is_specific_inquiry = bool(re.search(
+        r"\b(?:fee|fees|cost|charge|charges|payment|waiver|scholarship|quota|quotas|admit\s+card|seat|seats|exam\s+date|schedule|syllabus|gpa|cgpa|marks|minimum\s+requirement)\b|"
+        r"(?:ফি|খরচ|কোটা|বৃত্তি|তারিখ)",
+        normalized,
+    ))
+
+    if not is_specific_inquiry and re.search(
         r"\b(?:bup\s+)?(?:has|have|offers?|provides?)\s+(?:a\s+)?"
         r"master'?s?\s+(?:course|courses|program(?:me)?s?|degrees?)\b|"
         r"\b(?:want\s+(?:to\s+)?(?:know\s+about\s+)?master'?s?|available\s+master'?s?|master'?s?\s+(?:courses?|program(?:me)?s?|degrees?|offer(?:ed|ing)?|admission))\b|"
@@ -625,16 +803,28 @@ def build_retrieval_question(question: str, history: List[dict] | None) -> str:
     ):
         return "What master's programs does BUP offer?"
 
-    if re.search(
-        r"\b(?:bup\s+)?(?:has|have|offers?|provides?)\s+(?:a\s+)?"
-        r"(?:bachelor'?s?|undergraduate|hons|honours|honors)\s+(?:course|courses|program(?:me)?s?|degrees?)\b|"
-        r"\b(?:want\s+(?:to\s+)?(?:know\s+about\s+)?(?:bachelor|undergraduate)s?|available\s+(?:bachelor|undergraduate)s?|(?:bachelor'?s?|undergraduate)\s+(?:courses?|program(?:me)?s?|degrees?|offer(?:ed|ing)?|admission))\b|"
-        r"(?:স্নাতক|অনার্স|আন্ডারগ্র্যাজুয়েট|ব্যাচেলর)",
-        normalized,
+    if not is_specific_inquiry and (
+        re.search(
+            r"\b(?:bup\s+)?(?:has|have|offers?|provides?)\s+(?:a\s+)?"
+            r"(?:bachelor'?s?|undergrad(?:uate|ute)?|undegraduate|hons|honours|honors)\s+(?:course|courses|program(?:me)?s?|degrees?)\b|"
+            r"\b(?:want\s+(?:to\s+)?(?:know\s+about\s+)?(?:bachelor|undergrad(?:uate|ute)?|undegraduate)s?|available\s+(?:bachelor|undergrad(?:uate|ute)?|undegraduate)s?|(?:bachelor'?s?|undergrad(?:uate|ute)?|undegraduate)\s+(?:courses?|program(?:me)?s?|degrees?|offer(?:ed|ing)?|admission))\b|"
+            r"\b(?:courses?|program(?:me)?s?|degrees?|admission)\s+(?:offered\s+)?(?:for\s+)?(?:a\s+)?(?:12th(?:\s+pass)?|class\s+12|12\s+completed|passed\s+12|after\s+12(?:th)?|hsc|a[\s-]levels?|intermediate)\b|"
+            r"\b(?:12th(?:\s+pass)?|class\s+12|12\s+completed|passed\s+12|after\s+12(?:th)?|hsc|a[\s-]levels?|intermediate)\s+(?:student\s+)?(?:courses?|program(?:me)?s?|admission|offered?)\b|"
+            r"\b(?:courses?|programs?)\s+after\s+(?:12th?|hsc|a[\s-]levels?)\b|"
+            r"^(?:undergrad(?:uate|ute)?|undegraduate|bachelor|bachelors|hons|honours)$|"
+            r"(?:স্নাতক|অনার্স|আন্ডারগ্র্যাজুয়েট|ব্যাচেলর|এইচএসসি|দ্বাদশ)",
+            normalized,
+        )
+        or (
+            any(term in normalized for term in ["12th", "class 12", "12 completed", "hsc", "undergradute", "undergraduate"])
+            and any(term in normalized for term in ["science", "courses", "admission", "study", "offer"])
+        )
     ):
+        if any(sci in normalized for sci in ["science", "বিজ্ঞান"]):
+            return "What undergraduate bachelor degree programs are offered for science background students at BUP?"
         return "What undergraduate bachelor degree programs does BUP offer?"
 
-    if re.search(
+    if not is_specific_inquiry and re.search(
         r"\b(?:bup\s+)?(?:has|have|offers?|provides?)\s+(?:a\s+)?"
         r"(?:mphil|phd|doctorate|doctoral)\s+(?:course|courses|program(?:me)?s?|degrees?|research)\b|"
         r"\b(?:available\s+(?:mphil|phd)|(?:mphil|phd)\s+(?:courses?|program(?:me)?s?|degrees?|offer(?:ed|ing)?|admission))\b|"
@@ -667,22 +857,25 @@ def route_question(
 ) -> str:
     q = question.lower()
 
-    if (mental_health_assessment or {}).get("response_mode") in {"crisis", "clarify", "support"}:
-        return "mental_support"
     if has_crisis_intent(q):
-        return "mental_support"
-    if is_support_follow_up(q, conversation_history):
         return "mental_support"
     if has_support_intent(q) or has_academic_worry_intent(q):
         return "mental_support"
+    # Explicit student-record or identity queries must break out of a prior mental_support loop
     if has_identity_intent(q):
         return "student" if is_authenticated else "auth_required"
-    if has_private_data_intent(q):
+    if has_private_data_intent(q, conversation_history):
         return "student" if is_authenticated else "auth_required"
+    if (mental_health_assessment or {}).get("response_mode") in {"crisis", "clarify", "support"}:
+        return "mental_support"
+    if is_support_follow_up(q, conversation_history):
+        return "mental_support"
     if ASSISTANT_WHO_PATTERN.search(question) or ASSISTANT_ROLE_PATTERN.search(question):
         return "chat"
     if detect_greeting(q):
         return "greeting"
+    if is_broad_admission_question(q, conversation_history):
+        return "clarify"
     has_information_intent = bool(re.search(
         r"\b(who|what|when|where|why|how|explain|recommend|list|show|describe|"
         r"available|offered?|eligibility|eligible|apply)\b|\btell me(?:\s+more)?\s+about\b|"
@@ -771,21 +964,42 @@ CORE ADVISOR INSTRUCTIONS:
 - Present university information in a clean, professional, and well-structured format using standard markdown bullet points and bold headers.
 
 PROGRAM & COURSE INQUIRY GUIDELINES:
+CRITICAL GUARDRAIL:
+- ONLY apply these Program & Course inquiry guidelines IF the user's current question explicitly asks about degree programs, courses offered, or academic curriculum at BUP (e.g. "what courses are available", "tell me about master programs", "courses for 12th pass").
+- IF THE USER'S QUESTION IS NOT ASKING FOR A PROGRAM OR DEGREE LISTING (such as asking for personal advice, semester drop, retakes, rules, fees, dates, or academic policies): DO NOT output any degree program lists, faculty lists, or "20+ Master's degree programs" overview! Answer their specific question directly. If official BUP rules are not in the context, provide general advice and advise contacting the department.
+
+CRITICAL DEGREE LEVEL GROUNDING:
+- UNDERGRADUATE / BACHELOR / 12TH PASS / HSC / A-LEVELS INQUIRIES:
+  • BUP offers 16 undergraduate bachelor's degree programs across 4 primary faculties:
+    - Faculty of Business Studies (FBS)
+    - Faculty of Arts & Social Sciences (FASS)
+    - Faculty of Science & Technology (FST)
+    - Faculty of Security & Strategic Studies (FSSS)
+  • Exclude Faculty of Medical Studies (FMS) for undergraduate inquiries (FMS is postgraduate-only).
+  • ONLY list Bachelor's degrees (e.g., "• Bachelor of Business Administration (BBA General)", "• B.Sc. in Computer Science and Engineering (CSE)", "• Bachelor of Laws (LLB Hons)", "• BSS (Hons) in Economics").
+  • STRICT PROHIBITION: NEVER list Master's degrees (such as MBA, MDS, M.Sc., MA, LLM, MPhil, PhD, MPH) when the user asks about undergraduate, bachelor, high school, or 12th pass / HSC admission or courses!
+- MASTER'S / POSTGRADUATE / GRADUATE INQUIRIES:
+  • BUP offers 22 Master's degree programs across 5 faculties (FBS, FASS, FST, FSSS, FMS).
+  • ONLY list Master's degrees (e.g., "• Master of Business Administration (MBA — Professional)", "• Master of Development Studies (MDS — Professional)", "• Masters in Computer Science and Engineering (MCSE)").
+  • STRICT PROHIBITION: NEVER list Bachelor's degrees (BBA, B.Sc., BSS, BA, LLB) when the user asks about Master's programs.
+
 1. BROAD DEGREE INQUIRIES (e.g. asking generally about Master's or Bachelor's courses/programs offered by BUP):
-   - Scope Statement: Open by stating that BUP offers over 20+ Master's degree programs across 5 faculties (or 16 Bachelor's programs across 4 faculties).
+   - Scope Statement: For Master's inquiries, state that BUP offers over 20+ Master's degree programs across 5 faculties. For Undergraduate inquiries, state that BUP offers 16 Bachelor's programs across 4 faculties.
    - Clean Overview by Faculty: Present the degree programs grouped by academic faculty:
      • Faculty of Business Studies (FBS)
      • Faculty of Arts & Social Sciences (FASS)
      • Faculty of Science & Technology (FST)
      • Faculty of Security & Strategic Studies (FSSS)
-     • Faculty of Medical Studies (FMS)
-   - LIST DEGREE TITLES ONLY: Under each faculty, list only the official degree program names (e.g. "• Master of Business Administration (MBA — Professional)", "• Master of Development Studies (MDS — Professional)").
+     (Include Faculty of Medical Studies (FMS) ONLY for postgraduate inquiries, never for undergraduate).
+   - LIST DEGREE TITLES ONLY: Under each faculty, list only the official degree program names corresponding strictly to the requested level (Bachelor's for undergraduate, Master's for postgraduate).
    - NO SPEC SHEET DUMPING: For broad overviews, do NOT output detailed attribute keys or metadata rows (such as "+ Type:", "+ Schedule:", "+ Duration:", "+ Credits:", "+ Target Audience:"). Keep it clean, readable, and elegant.
    - STRICT BAN ON "N/A": NEVER write "N/A", "n/a", "None", or "Not Available" for any field. If an attribute is unknown or not requested, omit it entirely.
    - NEVER list individual curriculum course codes or course unit numbers (e.g. MDS501, MPCHRS1101, CSE101) unless the user explicitly asks for "syllabus", "course outline", "curriculum breakdown", or "course list for semester X". Distinguish degree programs from individual course units.
-   - MANDATORY CLARIFICATION QUESTION (ONLY FOR BROAD OVERVIEWS): Conclude broad program overviews with an engaging clarification question to guide the student:
+   - MANDATORY CLARIFICATION QUESTION (ONLY FOR BROAD OVERVIEWS): Conclude broad Master's program overviews with:
      "Which academic field or faculty interests you most (e.g., Business/MBA, Computing/IT, Law, Social Sciences), and are you looking for a Regular (weekday) or Professional (evening/weekend) program?"
-   - NEVER use this broad clarification question when the user asks about a specific program.
+     For broad Undergraduate overviews, ask only:
+     "Which academic field or faculty interests you most (e.g., Business/BBA, Computing/CSE, Law, Social Sciences)?" (Undergraduate programs are Regular full-time only—do NOT ask about Professional/evening/weekend.)
+   - NEVER use this broad clarification question when the user asks about a specific program, admission policy, or eligibility criteria.
 
 2. TARGETED DEGREE INQUIRIES (when user asks about a specific program like MESM, MDS, MCSE, MBA, etc.):
    - Provide the complete, structured details from the context for THAT SPECIFIC PROGRAM: Program Overview, Schedule (Regular weekday vs. Professional weekend/evening), Duration, Credit requirements, and Eligibility/Target Audience.
@@ -810,14 +1024,14 @@ GENERAL CONSTRAINTS:
 - Never assign a course to a specialization unless the context explicitly makes that relationship.
 - Do not reveal private student data unless it is explicitly present in the authenticated student-data context.
 
-Required response language:
-{response_language}
-
 Recent conversation:
 {conversation_history}
 
 Context: {context}
 Question: {question}
+
+STRICT LANGUAGE REQUIREMENT (override prior conversation language if different):
+{response_language}
 
 Helpful response:"""
 )
@@ -832,13 +1046,11 @@ Engage naturally and conversationally with the user.
 - Follow the required response language exactly.
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks.
 
-Required response language:
-{response_language}
-
 Recent conversation:
 {conversation_history}
 
 User: {question}
+STRICT LANGUAGE REQUIREMENT (override prior conversation language if different): {response_language}
 Assistant:"""
 )
 
@@ -853,17 +1065,16 @@ INSTRUCTIONS:
 - Keep the response to 2 short sentences.
 - Validate the feeling briefly, then ask what specific part is hardest.
 - If academics are mentioned, ask whether the main issue is exams, CGPA/results, attendance, family pressure, finances, or time management.
+- Banglish vocabulary note: "poralekha" / "porashona" means studying or academics (NOT writing); "semester drop" means dropping a semester; "chere dibo" / "quit" means quitting studies.
 - Do not claim access to private student records.
 - Follow the required response language exactly.
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks.
-
-Required response language:
-{response_language}
 
 Recent conversation:
 {conversation_history}
 
 User: {question}
+STRICT LANGUAGE REQUIREMENT (override prior conversation language if different): {response_language}
 Assistant:"""
 )
 
@@ -884,14 +1095,20 @@ User Question: {question}
 
 INSTRUCTIONS:
 - Answer only from the authenticated student record above.
+- Record structure guide:
+  • `profile`: name, reg_id, email, program, faculty, department, batch, current_year, current_semester, advisor, enrollment_date, expected_graduation, status.
+  • `academic_summary`: total_cgpa (cumulative CGPA), current_semester, current_semester_gpa, credits_completed, credits_required, attendance_percentage, attendance_status, academic_standing.
+  • `semester_cgpa` / `semester_details`: CGPA/SGPA per semester (e.g., sem1, sem2...).
+  • `current_courses`: enrolled courses with course_code, course_name, credits, marks, grade, status.
+  • `financial`: tuition_fee, waiver_amount, paid_amount, due_amount, pending_fees, payment_status, last_payment_date, payment_deadline. (If due_amount / pending_fees is 0, clearly state there is no due left; if > 0, state the exact due amount and payment details. In Bangla, বকেয়া / ফি বাকি refers to `financial.due_amount` — never say there is no due when `due_amount > 0`.)
 - Use recent conversation only to resolve follow-ups and maintain continuity. Never disclose, quote, list, or summarize it, even if asked.
 - When asked about a personal fact such as the user's name, answer only that specific fact from the authenticated student record; do not include surrounding conversation or unrelated personal details.
 - Never reveal, infer, compare, or fetch another student's private data.
 - If the user asks whether the assistant knows them, or asks for their name, answer using the authenticated student's name from the record.
-- If the user asks about another registration ID, refuse briefly.
-- If a field is missing or empty, say that specific information is not available in the record.
+- If the user asks about another registration ID, friend, or another student's record, refuse briefly ("Sorry, I can only show your own private student information.").
+- If a field is missing or null, say that specific information is not available in the record.
 - For direct factual questions, answer in one short sentence.
-- For broader record questions, give a concise bullet list of relevant fields.
+- For broader record or academic journey questions, give a clean, well-organized bullet list of relevant fields.
 - Follow the required response language exactly.
 - Do not include hidden reasoning, chain-of-thought, or <think> blocks.
 
@@ -1051,12 +1268,45 @@ def retrieve(state: RAGState) -> RAGState:
     k = state.get("top_k") or 3
     k = max(1, min(int(k), 10))
     try:
-        retriever = get_retriever(k)
+        retriever = get_retriever(max(k + 2, 5))
         retrieval_question = build_retrieval_question(
             state["question"],
             state.get("conversation_history"),
         )
         docs = retriever.invoke(retrieval_question)
+
+        # Degree-level chunk segregation to prevent cross-level hallucination
+        is_ug_inquiry = bool(re.search(
+            r"\b(?:undergraduate|bachelor|12th|hsc|a[\s-]levels?)\b",
+            retrieval_question,
+            re.IGNORECASE,
+        ))
+        is_masters_inquiry = bool(re.search(
+            r"\b(?:master'?s?|postgraduate|graduate)\b",
+            retrieval_question,
+            re.IGNORECASE,
+        ))
+
+        if is_ug_inquiry and not is_masters_inquiry and docs:
+            filtered = [
+                d for d in docs
+                if not (
+                    "master's and postgraduate degree programs directory" in (getattr(d, "metadata", {}).get("title") or "").lower()
+                    or "part 6: graduate" in (d.page_content[:100]).lower()
+                )
+            ]
+            docs = filtered if filtered else docs
+        elif is_masters_inquiry and not is_ug_inquiry and docs:
+            filtered = [
+                d for d in docs
+                if not (
+                    "undergraduate degree programs directory" in (getattr(d, "metadata", {}).get("title") or "").lower()
+                    or "part 5: undergraduate" in (d.page_content[:100]).lower()
+                )
+            ]
+            docs = filtered if filtered else docs
+
+        docs = docs[:k]
     except Exception:
         logger.exception("Public knowledge retrieval failed; continuing with model knowledge")
         docs = []

@@ -156,6 +156,7 @@ function App() {
           isAdminAuthenticated={isAdminAuthenticated}
           onAdminAuth={handleAdminAuth}
           onAdminLogout={handleAdminLogout}
+          onBackToChat={() => setActiveView('chat')}
         />
       ) : (
         <>

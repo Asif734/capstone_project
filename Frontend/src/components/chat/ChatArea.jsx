@@ -173,15 +173,16 @@ const StructuredMessage = ({ text, onSendMessage }) => {
       continue;
     }
 
-    // 3. Check if line is the closing advisor triage question
-    const isTriage =
-      (trimmed.endsWith('?') ||
-        trimmed.includes('interests you most') ||
+    // 3. Check if line is the closing advisor triage question (ONLY for academic program guidance)
+    const isProgramTriage =
+      (trimmed.includes('interests you most') ||
         trimmed.includes('looking for a Regular') ||
-        trimmed.includes('আগ্রহী') ||
-        trimmed.includes('জানতে চান')) &&
+        trimmed.includes('academic field or faculty') ||
+        trimmed.includes('কোন অনুষদ বা প্রোগ্রাম') ||
+        (trimmed.includes('আগ্রহী') && trimmed.includes('প্রোগ্রাম')) ||
+        (trimmed.includes('জানতে চান') && trimmed.includes('প্রোগ্রাম'))) &&
       !facultyKey;
-    if (isTriage && i >= rawLines.length - 4) {
+    if (isProgramTriage && i >= rawLines.length - 4) {
       questionBlock = cleanTextToken(trimmed);
       continue;
     }
@@ -250,6 +251,13 @@ const StructuredMessage = ({ text, onSendMessage }) => {
   // Flush remaining faculty items
   if (currentFaculty && currentFacultyItems.length > 0) {
     blocks.push({ type: 'faculty', key: currentFaculty, items: [...currentFacultyItems] });
+  }
+
+  // Only display program triage quick-reply card if an academic degree directory was actually returned
+  const hasProgramDirectory = blocks.some((b) => b.type === 'faculty' || b.type === 'title');
+  if (questionBlock && !hasProgramDirectory) {
+    blocks.push({ type: 'paragraph', text: questionBlock });
+    questionBlock = null;
   }
 
   // Quick reply options for prospective students
@@ -510,10 +518,10 @@ const ChatArea = ({ messages = [], onSendMessage, isSending = false }) => {
   };
 
   const starterQuestions = [
-    "What Master's degree programs does BUP offer?",
-    "What undergraduate bachelor courses are available?",
-    'Tell me about the Master of Development Studies (MDS)',
-    'What are the MBA weekend programs for professionals?',
+    "What undergraduate bachelor degree programs does BUP offer?",
+    "What Master's degree programs are available?",
+    "What are the admission requirements for undergraduate programs?",
+    "How can I consult an academic advisor for study guidance?",
   ];
 
   return (

@@ -211,6 +211,20 @@ export const adminAPI = {
     });
   },
 
+  deleteAlert: async (adminToken, alertId) => {
+    return apiCall(`/admin/mental-health-alerts/${alertId}`, {
+      method: 'DELETE',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  clearAlerts: async (adminToken) => {
+    return apiCall('/admin/mental-health-alerts', {
+      method: 'DELETE',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
   getStudents: async (adminToken) => {
     return apiCall('/admin/authorized-students', {
       method: 'GET',
@@ -267,6 +281,47 @@ export const adminAPI = {
     return apiCall('/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    });
+  },
+
+  getAuditLogs: async (adminToken, params = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit) query.set('limit', params.limit);
+    if (params.offset !== undefined) query.set('offset', params.offset);
+    if (params.actor_student_id) query.set('actor_student_id', params.actor_student_id);
+    if (params.target_student_id) query.set('target_student_id', params.target_student_id);
+    if (params.action_type) query.set('action_type', params.action_type);
+    if (params.auth_status) query.set('auth_status', params.auth_status);
+    if (params.agent_node) query.set('agent_node', params.agent_node);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return apiCall(`/admin/audit-logs${queryString}`, {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  getDocuments: async (adminToken) => {
+    return apiCall('/documents', {
+      method: 'GET',
+      headers: adminHeaders(adminToken),
+    });
+  },
+
+  uploadDocument: async (adminToken, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiCall('/upload', {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+      body: formData,
+    });
+  },
+
+  deleteDocument: async (adminToken, documentName) => {
+    return apiCall(`/documents/${encodeURIComponent(documentName)}`, {
+      method: 'DELETE',
+      headers: adminHeaders(adminToken),
     });
   },
 };

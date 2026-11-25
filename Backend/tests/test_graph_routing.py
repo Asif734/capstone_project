@@ -131,6 +131,34 @@ class RouteQuestionTests(unittest.TestCase):
     def test_academics_not_going_well_routes_to_mental_support(self):
         self.assertEqual(route_question("my academics are not going well at all"), "mental_support")
 
+    def test_semester_drop_inquiry_routes_to_mental_support(self):
+        self.assertEqual(
+            route_question("amar ki semester drop dewa ucit.. i think i should"),
+            "mental_support",
+        )
+
+    def test_bad_result_and_quit_study_routes_to_mental_support(self):
+        self.assertEqual(
+            route_question("amar last semester er result onek kharap hoise.. ami mone hoi chere dibo"),
+            "mental_support",
+        )
+        self.assertEqual(
+            route_question("no, i think amar poralekha chere dewa ucit. ar valo lagteche na"),
+            "mental_support",
+        )
+
+    def test_support_follow_up_on_semester_drop_stays_in_mental_support(self):
+        history = [
+            {
+                "question": "no, i think amar poralekha chere dewa ucit. ar valo lagteche na",
+                "answer": "It sounds like you're feeling a bit stuck and unsure about your path forward. Can I help you explore some options for next semester or connect you with resources that might support you in your academic journey?",
+            }
+        ]
+        self.assertEqual(
+            route_question("amar ki semester drop dewa ucit.. i think i should", conversation_history=history),
+            "mental_support",
+        )
+
     def test_crisis_language_routes_to_safety_support(self):
         self.assertEqual(route_question("i want to die"), "mental_support")
 
@@ -420,6 +448,135 @@ class RouteQuestionTests(unittest.TestCase):
         self.assertIn("Bangla using Bengali script", response_language_instruction("বিউপি তে কি কি মাস্টার্স কোর্স আছে?"))
         self.assertEqual(response_language_code("মাস্টার্স কোর্সের তালিকা দিন"), "bn")
         self.assertIn("Bangla using Bengali script", response_language_instruction("মাস্টার্স কোর্সের তালিকা দিন"))
+
+    def test_broad_admission_intent_clarifies_level(self):
+        self.assertEqual(route_question("i would like to take admission"), "clarify")
+        self.assertEqual(route_question("I want to get admitted to BUP"), "clarify")
+
+    def test_high_school_and_twelfth_pass_expands_to_undergraduate(self):
+        queries = [
+            "what is you courses offered for a 12th pass student?",
+            "courses offered for 12th pass student",
+            "what courses are offered after 12th?",
+            "undergradute",
+            "bup bachelor courses",
+        ]
+        for q in queries:
+            expanded = build_retrieval_question(q, [])
+            self.assertEqual(
+                expanded,
+                "What undergraduate bachelor degree programs does BUP offer?",
+                f"Failed for query: {q}",
+            )
+
+    def test_science_background_twelfth_pass_expands_to_science_undergrad(self):
+        queries = [
+            "what courses are offered for class 12 science student?",
+            "admission after 12 completed and science",
+        ]
+        for q in queries:
+            expanded = build_retrieval_question(q, [])
+            self.assertEqual(
+                expanded,
+                "What undergraduate bachelor degree programs are offered for science background students at BUP?",
+                f"Failed for query: {q}",
+            )
+
+    def test_twelfth_completed_and_science_follow_up(self):
+        history = [
+            {"question": "i would like to take admission", "answer": "Sure. BUP admission depends on the program level. Which one are you interested in? 1. Undergraduate 2. Master's 3. MPhil / PhD"},
+            {"question": "undergradute", "answer": "BUP offers 16 undergraduate bachelor's degree programs across 4 faculties."},
+        ]
+        expanded = build_retrieval_question("12 completed and science", history)
+        self.assertEqual(
+            expanded,
+            "What undergraduate bachelor degree programs are offered for science background students at BUP?",
+        )
+
+    def test_undergraduate_specific_fee_question_preserved(self):
+        q = "what is the admission form fee for bachelor programme?"
+        self.assertEqual(route_question(q), "rag")
+        self.assertEqual(build_retrieval_question(q, []), q)
+
+    def test_discipline_admission_criteria_routes_to_rag_not_clarify(self):
+        cse_history = [
+            {
+                "question": "i want to know details about computer science",
+                "answer": "The FST department at BUP offers B.Sc. in Computer Science and Engineering (CSE).",
+            }
+        ]
+        self.assertEqual(
+            route_question(
+                "Artificial intelligence, what is the admission criteria i need to meet.",
+                conversation_history=cse_history,
+            ),
+            "rag",
+        )
+
+    def test_redesigned_student_journey_and_privacy_routing(self):
+        self.assertEqual(
+            route_question("can you show my friend saad bin sakib cgpa?", is_authenticated=True),
+            "student",
+        )
+        self.assertEqual(route_question("what is my total cgpa?", is_authenticated=True), "student")
+        self.assertEqual(route_question("do i have any due?", is_authenticated=True), "student")
+        self.assertEqual(route_question("who is my academic advisor?", is_authenticated=True), "student")
+        self.assertEqual(route_question("what is my attendance percentage?", is_authenticated=True), "student")
+        self.assertEqual(route_question("what is my total cgpa?", is_authenticated=False), "auth_required")
+
+    def test_computer_science_follow_up_not_collapsed_to_generic_science(self):
+        ug_history = [
+            {
+                "question": "what are the bachelor course bup offers?",
+                "answer": "BUP offers 16 undergraduate Bachelor's degree programs across 4 primary faculties.",
+            }
+        ]
+        expanded = build_retrieval_question("i would like to about computer science..", ug_history)
+        self.assertIn("computer science", expanded.lower())
+        self.assertNotIn("science background students", expanded.lower())
+
+    def test_banglish_and_bengali_distress_and_crisis_routing(self):
+        self.assertEqual(route_question("amar bachte iccha korche na"), "mental_support")
+        self.assertEqual(
+            route_question("আমার খুব মানসিক চাপ লাগছে, মনে হচ্ছে পড়াশোনা আর চালিয়ে যেতে পারব না"),
+            "mental_support",
+        )
+
+    def test_student_record_and_identity_break_out_of_mental_support_loop(self):
+        support_history = [
+            {
+                "question": "i should dropout... i can't bear it anymore",
+                "answer": "I can see that you're feeling like you're at your breaking point. What's driving you to feel this way?",
+            }
+        ]
+        stale_assessment = {"response_mode": "crisis", "risk_level": "critical"}
+        self.assertEqual(
+            route_question(
+                "can you fetch my cgpa?",
+                is_authenticated=True,
+                conversation_history=support_history,
+                mental_health_assessment=stale_assessment,
+            ),
+            "student",
+        )
+        self.assertEqual(
+            route_question(
+                "i forgot about my first semester cgpa. can you fetch it..?",
+                is_authenticated=True,
+                conversation_history=support_history,
+                mental_health_assessment=stale_assessment,
+            ),
+            "student",
+        )
+        self.assertEqual(
+            route_question(
+                "do you know me?",
+                is_authenticated=True,
+                conversation_history=support_history,
+                mental_health_assessment=stale_assessment,
+            ),
+            "student",
+        )
 
 
 if __name__ == "__main__":

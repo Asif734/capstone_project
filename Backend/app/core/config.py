@@ -22,7 +22,7 @@ class Settings:
 
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
     LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
     OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
     OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "1024"))

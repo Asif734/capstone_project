@@ -1,38 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
+  Activity,
+  AlertOctagon,
+  BookOpen,
   CheckCircle2,
-  ClipboardList,
-  Eye,
-  Plus,
+  Database,
+  FileText,
+  GraduationCap,
+  Layers,
+  Lock,
+  Mail,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
-  UserPlus,
+  TrendingUp,
+  UserCheck,
+  Users,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
-
-const blankStudentForm = {
-  reg_id: '',
-  name: '',
-  email: '',
-  department: '',
-  year: '',
-  semester: '',
-  status: 'active',
-};
-
-const blankRecordForm = {
-  reg_id: '',
-  academic_semester: '',
-  academic_cgpa: '',
-  credits_completed: '',
-  tuition_fee: '',
-  paid_amount: '',
-  due_amount: '',
-  pending_fees: '',
-  cgpa_records: '',
-  courses: '',
-};
+import AdminHeader from './AdminHeader';
+import OverviewTab from './OverviewTab';
+import AlertsTab from './AlertsTab';
+import StudentsTab from './StudentsTab';
+import RecordsTab from './RecordsTab';
+import AuditLogsTab from './AuditLogsTab';
+import DocumentsTab from './DocumentsTab';
 
 const severityOrder = {
   critical: 0,
@@ -41,71 +35,78 @@ const severityOrder = {
   low: 3,
 };
 
-const statusOptions = ['new', 'reviewed', 'contacted', 'closed'];
-
-const severityClasses = {
-  critical: 'border-red-400/60 bg-red-500/20 text-red-100',
-  high: 'border-orange-400/60 bg-orange-500/20 text-orange-100',
-  moderate: 'border-yellow-400/60 bg-yellow-500/20 text-yellow-100',
-  low: 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100',
-};
-
 const sortAlerts = (items = []) => {
   return [...items].sort((a, b) => {
-    const severityDiff =
-      (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
-    if (severityDiff !== 0) return severityDiff;
+    const diff = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+    if (diff !== 0) return diff;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 };
 
-const formatDate = (value) => {
-  if (!value) return 'N/A';
-  return new Date(value).toLocaleString();
-};
-
-const formatConfidence = (value) => {
-  if (value === null || value === undefined) return 'N/A';
-  return `${Math.round(value * 100)}%`;
-};
-
-const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) => {
+export default function AdminDashboard({
+  isAdminAuthenticated,
+  onAdminAuth,
+  onAdminLogout,
+  onBackToChat,
+}) {
+  // Auth state
+  const [activeToken, setActiveToken] = useState(() => {
+    return sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken') || '';
+  });
+  const [isAuthorized, setIsAuthorized] = useState(Boolean(activeToken) || Boolean(isAdminAuthenticated));
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [activeToken, setActiveToken] = useState(() => localStorage.getItem('adminToken') || '');
-  const [isAuthorized, setIsAuthorized] = useState(() => Boolean(localStorage.getItem('adminToken')));
-  const [activeTab, setActiveTab] = useState('alerts');
+
+  // Active navigation tab
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Core data states
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [students, setStudents] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [totalAuditLogs, setTotalAuditLogs] = useState(0);
+  const [documents, setDocuments] = useState([]);
+  const [totalDocuments, setTotalDocuments] = useState(0);
+
+  // Detail / Interaction states
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
-  const [studentForm, setStudentForm] = useState(blankStudentForm);
-  const [editingStudent, setEditingStudent] = useState(null);
+  const [selectedRecordStudent, setSelectedRecordStudent] = useState(null);
+  const [recordData, setRecordData] = useState(null);
   const [studentDetail, setStudentDetail] = useState(null);
-  const [recordForm, setRecordForm] = useState(blankRecordForm);
-  const [recordStudent, setRecordStudent] = useState(null);
+
+  // Status flags
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast((current) => ({ ...current, show: false }));
+    }, 4500);
+  };
 
   const criticalNewCount = useMemo(() => {
-    return alerts.filter(
-      (alert) => alert.severity === 'critical' && alert.status === 'new'
-    ).length;
+    return alerts.filter((a) => a.severity === 'critical' && a.status === 'new').length;
   }, [alerts]);
 
+  const unresolvedAlertsCount = useMemo(() => {
+    return alerts.filter((a) => a.status === 'new' || a.status === 'reviewed').length;
+  }, [alerts]);
+
+  // Load complete dashboard data
   const loadDashboard = async (tokenToUse = activeToken) => {
     let token = tokenToUse;
     if (!token && (!adminEmail.trim() || !adminPassword)) {
-      setError('Enter the admin email and password.');
+      showToast('Enter the admin email and password.', 'error');
       return;
     }
 
     setLoading(true);
-    setError('');
-    setSuccess('');
     try {
       if (!token) {
         const loginResponse = await adminAPI.login(adminEmail.trim(), adminPassword);
@@ -113,104 +114,152 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
       }
 
       if (!token?.trim()) {
-        throw new Error('Invalid admin login response.');
+        throw new Error('Invalid admin credentials.');
       }
 
-      const [summaryData, alertData, studentData] = await Promise.all([
-        adminAPI.getSummary(token),
-        adminAPI.getAlerts(token),
-        adminAPI.getStudents(token),
+      const [summaryData, alertData, studentData, auditData, docData] = await Promise.all([
+        adminAPI.getSummary(token).catch(() => ({})),
+        adminAPI.getAlerts(token).catch(() => []),
+        adminAPI.getStudents(token).catch(() => []),
+        adminAPI.getAuditLogs(token, { limit: 100 }).catch(() => ({ items: [], total: 0 })),
+        adminAPI.getDocuments(token).catch(() => ({ documents: [], total_documents: 0 })),
       ]);
 
       setSummary(summaryData);
       setAlerts(sortAlerts(alertData));
       setStudents(studentData);
+      setAuditLogs(auditData.items || []);
+      setTotalAuditLogs(auditData.total || (auditData.items || []).length);
+      setDocuments(docData.documents || []);
+      setTotalDocuments(docData.total_documents || (docData.documents || []).length);
+
       setActiveToken(token);
+      sessionStorage.setItem('adminToken', token);
       localStorage.setItem('adminToken', token);
       setAdminPassword('');
       setIsAuthorized(true);
-      if (onAdminAuth) onAdminAuth();
+      if (onAdminAuth) onAdminAuth(token);
     } catch (err) {
       setIsAuthorized(false);
-      setError(err.message || 'Unable to load admin dashboard.');
+      showToast(err.message || 'Unable to authenticate as admin.', 'error');
       setActiveToken('');
+      sessionStorage.removeItem('adminToken');
       localStorage.removeItem('adminToken');
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial authentication check
   useEffect(() => {
-    const storedToken = localStorage.getItem('adminToken');
+    const storedToken = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
     if (storedToken && !summary && !loading) {
       loadDashboard(storedToken);
     }
   }, []);
 
-  const handleLoginSubmit = (event) => {
-    event.preventDefault();
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
     loadDashboard();
   };
 
-  const selectAlert = (alert) => {
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminToken');
+    localStorage.removeItem('adminToken');
+    setActiveToken('');
+    setIsAuthorized(false);
+    setAdminEmail('');
+    setAdminPassword('');
+    setSummary(null);
+    setAlerts([]);
+    setStudents([]);
+    setAuditLogs([]);
+    setDocuments([]);
+    setSelectedAlert(null);
+    setSelectedRecordStudent(null);
+    setRecordData(null);
+    setStudentDetail(null);
+    if (onAdminLogout) onAdminLogout();
+    showToast('Logged out successfully.', 'success');
+  };
+
+  // Alerts actions
+  const handleSelectAlert = (alert) => {
     setSelectedAlert(alert);
-    setNoteDraft(alert.admin_notes || '');
+    setNoteDraft(alert?.admin_notes || '');
   };
 
-  const refreshSelectedAlert = (updatedAlert) => {
-    setSelectedAlert(updatedAlert);
-    setNoteDraft(updatedAlert.admin_notes || '');
-    setAlerts((current) =>
-      sortAlerts(current.map((alert) => (alert.id === updatedAlert.id ? updatedAlert : alert)))
-    );
+  const handleCloseAlertDrawer = () => {
+    setSelectedAlert(null);
+    setNoteDraft('');
   };
 
-  const updateSelectedAlert = async (status = selectedAlert?.status) => {
+  const handleUpdateAlert = async (status, notes = noteDraft) => {
     if (!selectedAlert) return;
-
     setSaving(true);
-    setError('');
-    setSuccess('');
     try {
-      const updatedAlert = await adminAPI.updateAlert(activeToken, selectedAlert.id, {
+      const updated = await adminAPI.updateAlert(activeToken, selectedAlert.id, {
         status,
-        admin_notes: noteDraft,
+        admin_notes: notes,
       });
-      refreshSelectedAlert(updatedAlert);
-      setSuccess('Alert updated.');
+      setSelectedAlert(updated);
+      setAlerts((current) =>
+        sortAlerts(current.map((a) => (a.id === updated.id ? updated : a)))
+      );
+      showToast(`Alert updated to "${status}".`, 'success');
     } catch (err) {
-      setError(err.message || 'Unable to update alert.');
+      showToast(err.message || 'Failed to update alert.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleStudentFormChange = (event) => {
-    const { name, value } = event.target;
-    setStudentForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const handleRecordFormChange = (event) => {
-    const { name, value } = event.target;
-    setRecordForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const resetStudentForm = () => {
-    setStudentForm(blankStudentForm);
-    setEditingStudent(null);
-  };
-
-  const handleSaveStudent = async (event) => {
-    event.preventDefault();
+  const handleDeleteAlert = async (alert) => {
+    if (!window.confirm(`Delete mental health alert #${alert.id} for ${alert.student_name || alert.reg_id || 'this student'}?`)) {
+      return;
+    }
     setSaving(true);
-    setError('');
-    setSuccess('');
+    try {
+      await adminAPI.deleteAlert(activeToken, alert.id);
+      setAlerts((current) => current.filter((a) => a.id !== alert.id));
+      if (selectedAlert?.id === alert.id) {
+        setSelectedAlert(null);
+        setNoteDraft('');
+      }
+      showToast('Mental health alert deleted.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to delete alert.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
+  const handleClearAlerts = async () => {
+    if (!window.confirm('Clear all mental health alerts from the database? This cannot be undone.')) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await adminAPI.clearAlerts(activeToken);
+      setAlerts([]);
+      setSelectedAlert(null);
+      setNoteDraft('');
+      showToast('All mental health alerts cleared.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to clear alerts.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Students actions
+  const handleSaveStudent = async (studentForm, editingStudent = null) => {
+    setSaving(true);
     const payload = {
-      reg_id: studentForm.reg_id,
-      name: studentForm.name,
-      email: studentForm.email,
-      department: studentForm.department || null,
+      reg_id: studentForm.reg_id.trim(),
+      name: studentForm.name.trim(),
+      email: studentForm.email.trim(),
+      department: studentForm.department?.trim() || null,
       year: studentForm.year ? Number(studentForm.year) : null,
       semester: studentForm.semester ? Number(studentForm.semester) : null,
       status: studentForm.status || 'active',
@@ -221,803 +270,452 @@ const AdminDashboard = ({ isAdminAuthenticated, onAdminAuth, onAdminLogout }) =>
         const updated = await adminAPI.updateStudent(activeToken, editingStudent.id, payload);
         setStudents((current) =>
           current
-            .map((student) => (student.id === updated.id ? updated : student))
+            .map((s) => (s.id === updated.id ? updated : s))
             .sort((a, b) => a.reg_id.localeCompare(b.reg_id))
         );
-        setSuccess('Student updated.');
+        showToast('Authorized student updated.', 'success');
       } else {
         const created = await adminAPI.addStudent(activeToken, payload);
         setStudents((current) =>
           [...current, created].sort((a, b) => a.reg_id.localeCompare(b.reg_id))
         );
-        setSuccess('Authorized student added.');
+        showToast('New student added successfully.', 'success');
       }
-      resetStudentForm();
     } catch (err) {
-      setError(err.message || 'Unable to save student.');
+      showToast(err.message || 'Failed to save student.', 'error');
+      throw err;
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEditStudent = (student) => {
-    setEditingStudent(student);
-    setStudentForm({
-      reg_id: student.reg_id || '',
-      name: student.name || '',
-      email: student.email || '',
-      department: student.department || '',
-      year: student.year ?? '',
-      semester: student.semester ?? '',
-      status: student.status || 'active',
-    });
   };
 
   const handleDeleteStudent = async (student) => {
     if (!window.confirm(`Delete ${student.name || student.reg_id}? This cannot be undone.`)) {
       return;
     }
-
     setSaving(true);
-    setError('');
-    setSuccess('');
     try {
       await adminAPI.deleteStudent(activeToken, student.id);
-      setStudents((current) => current.filter((item) => item.id !== student.id));
-      if (editingStudent?.id === student.id) {
-        resetStudentForm();
+      setStudents((current) => current.filter((s) => s.id !== student.id));
+      if (selectedRecordStudent?.reg_id === student.reg_id) {
+        setSelectedRecordStudent(null);
+        setRecordData(null);
       }
-      if (studentDetail?.student?.reg_id === student.reg_id) {
-        setStudentDetail(null);
-      }
-      if (recordForm.reg_id === student.reg_id) {
-        setRecordForm(blankRecordForm);
-        setRecordStudent(null);
-      }
-      setSuccess('Student removed.');
+      showToast('Student removed from registry.', 'success');
     } catch (err) {
-      setError(err.message || 'Unable to remove student.');
+      showToast(err.message || 'Failed to remove student.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAdminLogout = () => {
-    localStorage.removeItem('adminToken');
-    setActiveToken('');
-    setIsAuthorized(false);
-    setAdminEmail('');
-    setAdminPassword('');
-    setSummary(null);
-    setAlerts([]);
-    setStudents([]);
-    setSelectedAlert(null);
-    setNoteDraft('');
-    setStudentDetail(null);
-    setRecordForm(blankRecordForm);
-    setRecordStudent(null);
-    resetStudentForm();
-    if (onAdminLogout) onAdminLogout();
-  };
-
-  const loadStudentMentalHealth = async (regId) => {
+  // Load Student 360 profile
+  const handleLoadStudentProfile = async (regId) => {
+    if (!regId) return;
     setLoading(true);
-    setError('');
-    setSuccess('');
     try {
       const detail = await adminAPI.getStudentMentalHealth(activeToken, regId);
       setStudentDetail({
         ...detail,
         alerts: sortAlerts(detail.alerts),
       });
-      setActiveTab('students');
     } catch (err) {
-      setError(err.message || 'Unable to load student mental-health profile.');
+      showToast(err.message || 'Failed to load student profile.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadStudentRecords = async (regId) => {
-    if (!regId) return;
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const detail = await adminAPI.getStudentRecords(activeToken, regId);
-      setRecordStudent(detail.student);
-      setRecordForm({
-        reg_id: detail.student.reg_id,
-        academic_semester: detail.academic?.semester || '',
-        academic_cgpa: detail.academic?.cgpa ?? '',
-        credits_completed: detail.academic?.credits_completed ?? '',
-        tuition_fee: detail.financial?.tuition_fee ?? '',
-        paid_amount: detail.financial?.paid_amount ?? '',
-        due_amount: detail.financial?.due_amount ?? '',
-        pending_fees: detail.financial?.pending_fees ?? '',
-        cgpa_records: (detail.cgpa_records || [])
-          .map((record) => `${record.semester}: ${record.cgpa}`)
-          .join('\n'),
-        courses: (detail.courses || [])
-          .map((course) => `${course.course_name}: ${course.marks ?? ''}`)
-          .join('\n'),
-      });
-      setActiveTab('records');
-    } catch (err) {
-      setError(err.message || 'Unable to load student records.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const parseCgpaLines = (text) => {
-    return text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [semester, ...valueParts] = line.split(':');
-        const cgpa = Number(valueParts.join(':').trim());
-        if (!semester?.trim() || Number.isNaN(cgpa)) {
-          throw new Error('Use CGPA format like "sem1: 3.65".');
-        }
-        return { semester: semester.trim(), cgpa };
-      });
-  };
-
-  const parseCourseLines = (text) => {
-    return text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [courseName, ...valueParts] = line.split(':');
-        const marksText = valueParts.join(':').trim();
-        const marks = marksText === '' ? null : Number(marksText);
-        if (!courseName?.trim() || (marksText !== '' && Number.isNaN(marks))) {
-          throw new Error('Use course format like "Data Structures: 87".');
-        }
-        return { course_name: courseName.trim(), marks };
-      });
-  };
-
-  const optionalNumber = (value) => (value === '' ? null : Number(value));
-
-  const handleSaveRecords = async (event) => {
-    event.preventDefault();
-    if (!recordForm.reg_id) {
-      setError('Select a student first.');
+  // Records actions
+  const handleSelectRecordStudent = async (regId) => {
+    if (!regId) {
+      setSelectedRecordStudent(null);
+      setRecordData(null);
       return;
     }
-
-    setSaving(true);
-    setError('');
-    setSuccess('');
+    const student = students.find((s) => s.reg_id === regId) || { reg_id: regId };
+    setSelectedRecordStudent(student);
+    setLoading(true);
     try {
-      const payload = {
-        academic: {
-          semester: recordForm.academic_semester || null,
-          cgpa: optionalNumber(recordForm.academic_cgpa),
-          credits_completed: optionalNumber(recordForm.credits_completed),
-        },
-        financial: {
-          tuition_fee: optionalNumber(recordForm.tuition_fee),
-          paid_amount: optionalNumber(recordForm.paid_amount),
-          due_amount: optionalNumber(recordForm.due_amount),
-          pending_fees: optionalNumber(recordForm.pending_fees),
-        },
-        cgpa_records: parseCgpaLines(recordForm.cgpa_records),
-        courses: parseCourseLines(recordForm.courses),
-      };
-
-      const updated = await adminAPI.updateStudentRecords(activeToken, recordForm.reg_id, payload);
-      setRecordStudent(updated.student);
-      setSuccess('Student academic and billing records updated.');
+      const records = await adminAPI.getStudentRecords(activeToken, regId);
+      setRecordData(records);
+      setSelectedRecordStudent(records.student || student);
     } catch (err) {
-      setError(err.message || 'Unable to save student records.');
+      showToast(err.message || 'Failed to fetch student records.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditStudentRecordsFromDirectory = async (regId) => {
+    setActiveTab('records');
+    await handleSelectRecordStudent(regId);
+  };
+
+  const handleSaveRecords = async (regId, payload) => {
+    setSaving(true);
+    try {
+      const updated = await adminAPI.updateStudentRecords(activeToken, regId, payload);
+      setRecordData(updated);
+      setSelectedRecordStudent(updated.student);
+      showToast('Academic and billing records updated successfully.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to save academic records.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  // Audit Logs refresh
+  const handleRefreshAuditLogs = async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.getAuditLogs(activeToken, { limit: 100 });
+      setAuditLogs(res.items || []);
+      setTotalAuditLogs(res.total || (res.items || []).length);
+      showToast('Access audit logs refreshed.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to refresh audit logs.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Documents actions
+  const handleRefreshDocuments = async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.getDocuments(activeToken);
+      setDocuments(res.documents || []);
+      setTotalDocuments(res.total_documents || (res.documents || []).length);
+      showToast('Knowledge base index refreshed.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to refresh documents.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadDocument = async (file) => {
+    setUploadingDoc(true);
+    try {
+      const res = await adminAPI.uploadDocument(activeToken, file);
+      showToast(res.message || 'Document indexed into FAISS successfully.', 'success');
+      await handleRefreshDocuments();
+    } catch (err) {
+      showToast(err.message || 'Failed to upload document.', 'error');
+      throw err;
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentName) => {
+    setDeletingDoc(true);
+    try {
+      const res = await adminAPI.deleteDocument(activeToken, documentName);
+      showToast(res.message || 'Document purged from FAISS store.', 'success');
+      await handleRefreshDocuments();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete document.', 'error');
+    } finally {
+      setDeletingDoc(false);
+    }
+  };
+
+  // Unauthenticated login view
   if (!isAuthorized) {
     return (
-      <main className="flex-1 overflow-y-auto px-4 py-10">
-        <div className="mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-800/80 p-8 shadow-2xl">
-          <div className="mb-6 flex items-center space-x-3">
-            <div className="rounded-xl bg-purple-500/20 p-3 text-purple-200">
-              <ShieldCheck className="h-6 w-6" />
+      <main className="flex-1 overflow-y-auto px-4 py-12 flex items-center justify-center min-h-[85vh]">
+        <div className="w-full max-w-md rounded-3xl border border-purple-500/30 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center text-white shadow-xl shadow-purple-500/25 mb-4">
+              <ShieldCheck className="h-8 w-8" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Admin Dashboard</h1>
-              <p className="text-sm text-purple-200">Enter the admin email and password.</p>
-            </div>
+            <h1 className="text-2xl font-black text-white">BUP Admin Console</h1>
+            <p className="text-xs text-purple-200/70 mt-1 max-w-xs">
+              Enter your administrative credentials to access student well-being triage, compliance, and academic records.
+            </p>
           </div>
 
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <input
-              type="email"
-              value={adminEmail}
-              onChange={(event) => setAdminEmail(event.target.value)}
-              className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-4 py-3 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-              placeholder="Admin email"
-            />
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(event) => setAdminPassword(event.target.value)}
-              className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-4 py-3 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-              placeholder="Password"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-purple-200 mb-1.5">Admin Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3 h-4 w-4 text-purple-300/50" />
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="w-full rounded-xl border border-purple-500/30 bg-slate-800/80 py-2.5 pl-10 pr-4 text-xs text-white placeholder-purple-300/40 focus:border-purple-400 focus:outline-none"
+                  placeholder="admin@bup.edu.bd"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-purple-200 mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-purple-300/50" />
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full rounded-xl border border-purple-500/30 bg-slate-800/80 py-2.5 pl-10 pr-4 text-xs text-white placeholder-purple-300/40 focus:border-purple-400 focus:outline-none"
+                  placeholder="••••••••••••"
+                  required
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center space-x-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 font-medium text-white transition-all hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 text-xs font-bold text-white shadow-lg shadow-purple-600/30 hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50"
             >
-              <ShieldCheck className="h-4 w-4" />
-              <span>{loading ? 'Loading...' : 'Open Dashboard'}</span>
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Authenticate to Console</span>
+                </>
+              )}
             </button>
           </form>
+
+          {onBackToChat && (
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={onBackToChat}
+                className="text-xs text-purple-300/70 hover:text-white underline transition-colors"
+              >
+                Return to Student Chat Assistant
+              </button>
+            </div>
+          )}
         </div>
       </main>
     );
   }
 
   return (
-    <main className="flex-1 overflow-y-auto px-4 py-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <section className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-5 shadow-xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="flex items-center space-x-3">
-                <ShieldCheck className="h-6 w-6 text-purple-200" />
-                <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-              </div>
-              <p className="mt-1 text-sm text-purple-200">
-                New critical alerts are surfaced first for review.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => loadDashboard(activeToken)}
-                disabled={loading}
-                className="flex items-center justify-center space-x-2 rounded-lg border border-purple-500/30 px-4 py-2 text-purple-100 transition-colors hover:bg-purple-500/10 disabled:opacity-60"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-              <button
-                onClick={handleAdminLogout}
-                disabled={loading}
-                className="flex items-center justify-center space-x-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-red-200 hover:bg-red-500/20 disabled:opacity-60"
-              >
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            {[
-              ['New Critical', criticalNewCount],
-              ['Total Alerts', summary?.total_alerts ?? 0],
-              ['New', summary?.new_alerts ?? 0],
-              ['Critical', summary?.critical_alerts ?? 0],
-              ['High', summary?.high_alerts ?? 0],
-              ['Moderate', summary?.moderate_alerts ?? 0],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg border border-slate-600/70 bg-slate-900/50 p-3">
-                <p className="text-xs uppercase tracking-wide text-purple-200/70">{label}</p>
-                <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {(error || success) && (
-          <div
-            className={`rounded-lg border px-4 py-3 text-sm ${
-              error
-                ? 'border-red-400/40 bg-red-500/10 text-red-200'
-                : 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-            }`}
+    <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 max-w-7xl mx-auto space-y-6">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all animate-bounce ${
+            toast.type === 'error'
+              ? 'border-red-500/40 bg-red-950/90 text-red-200 shadow-red-500/20'
+              : 'border-emerald-500/40 bg-emerald-950/90 text-emerald-200 shadow-emerald-500/20'
+          }`}
+        >
+          {toast.type === 'error' ? (
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast((t) => ({ ...t, show: false }))}
+            className="ml-2 rounded p-1 hover:bg-white/10"
           >
-            {error || success}
-          </div>
-        )}
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
-        <div className="flex rounded-xl border border-purple-500/20 bg-slate-800/60 p-1">
-          {[
-            ['alerts', 'Alerts', AlertTriangle],
-            ['students', 'Authorized Students', UserPlus],
-            ['records', 'Student Records', ClipboardList],
-          ].map(([key, label, Icon]) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex flex-1 items-center justify-center space-x-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === key
-                  ? 'bg-purple-500 text-white'
-                  : 'text-purple-200 hover:bg-purple-500/10 hover:text-white'
+      {/* Header */}
+      <AdminHeader
+        loading={loading}
+        criticalNewCount={criticalNewCount}
+        onRefresh={() => loadDashboard()}
+        onLogout={handleLogout}
+        onBackToChat={onBackToChat}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
+
+      {/* Segmented Navigation Tabs */}
+      <nav className="flex flex-wrap items-center gap-2 rounded-2xl border border-purple-500/20 bg-slate-900/70 p-1.5 shadow-lg backdrop-blur-md">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Activity className="h-4 w-4" />
+          <span>Executive Overview</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('alerts')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'alerts'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <ShieldAlert className="h-4 w-4" />
+          <span>Mental Health Triage</span>
+          {unresolvedAlertsCount > 0 && (
+            <span
+              className={`rounded-full px-2 py-0.2 text-[10px] font-bold ${
+                criticalNewCount > 0
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-purple-500/40 text-purple-200'
               }`}
             >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
+              {unresolvedAlertsCount}
+            </span>
+          )}
+        </button>
 
-        {activeTab === 'alerts' ? (
-          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="overflow-hidden rounded-xl border border-purple-500/20 bg-slate-800/70">
-              <div className="border-b border-purple-500/20 px-4 py-3">
-                <h2 className="font-semibold text-white">Risk Alerts</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px] text-left text-sm">
-                  <thead className="bg-slate-900/60 text-xs uppercase text-purple-200/70">
-                    <tr>
-                      <th className="px-4 py-3">Severity</th>
-                      <th className="px-4 py-3">Student</th>
-                      <th className="px-4 py-3">Signal</th>
-                      <th className="px-4 py-3">Score</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700/80">
-                    {alerts.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-6 text-center text-purple-200" colSpan="7">
-                          No mental-health alerts yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      alerts.map((alert) => (
-                        <tr key={alert.id} className="text-slate-100 hover:bg-slate-700/40">
-                          <td className="px-4 py-3">
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
-                                severityClasses[alert.severity] || 'border-slate-500 bg-slate-700'
-                              }`}
-                            >
-                              {alert.severity}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-white">
-                              {alert.student_name || alert.reg_id || 'Unknown'}
-                            </div>
-                            <div className="text-xs text-purple-200/70">
-                              {alert.reg_id} {alert.student_email ? `- ${alert.student_email}` : ''}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div>{alert.summary || alert.predicted_class || 'Risk signal'}</div>
-                            <div className="text-xs text-purple-200/70">
-                              Confidence {formatConfidence(alert.confidence)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{alert.score}</td>
-                          <td className="px-4 py-3 capitalize">{alert.status}</td>
-                          <td className="px-4 py-3">{formatDate(alert.created_at)}</td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => selectAlert(alert)}
-                              className="inline-flex items-center space-x-1 rounded-lg border border-purple-500/30 px-3 py-1.5 text-purple-100 hover:bg-purple-500/10"
-                            >
-                              <Eye className="h-4 w-4" />
-                              <span>Review</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <button
+          onClick={() => setActiveTab('students')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'students'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>Student Directory</span>
+          <span className="rounded-full bg-slate-800 px-2 py-0.2 text-[10px] text-purple-300/70">
+            {students.length}
+          </span>
+        </button>
 
-            <aside className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4">
-              {selectedAlert ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-purple-200/70">Selected Alert</p>
-                    <h3 className="mt-1 text-lg font-bold text-white">
-                      {selectedAlert.student_name || selectedAlert.reg_id || 'Student'}
-                    </h3>
-                    <p className="text-sm text-purple-200">{selectedAlert.reg_id}</p>
-                  </div>
+        <button
+          onClick={() => setActiveTab('records')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'records'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <GraduationCap className="h-4 w-4" />
+          <span>Academic & Billing Records</span>
+        </button>
 
-                  <div className="rounded-lg bg-slate-900/50 p-3 text-sm text-slate-100">
-                    <p className="mb-2 text-xs uppercase tracking-wide text-purple-200/70">
-                      One-line summary
-                    </p>
-                    <p>{selectedAlert.summary || 'No summary stored.'}</p>
-                  </div>
+        <button
+          onClick={() => setActiveTab('audits')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'audits'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          <span>FERPA Audit Trail</span>
+          <span className="rounded-full bg-slate-800 px-2 py-0.2 text-[10px] text-purple-300/70">
+            {totalAuditLogs}
+          </span>
+        </button>
 
-                  <div className="rounded-lg bg-slate-900/50 p-3 text-sm text-slate-100">
-                    <p className="mb-2 text-xs uppercase tracking-wide text-purple-200/70">
-                      Latest flagged message
-                    </p>
-                    <p>{selectedAlert.question_sample || 'No sample stored.'}</p>
-                  </div>
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'documents'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-purple-300/70 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Database className="h-4 w-4" />
+          <span>Knowledge Base</span>
+          <span className="rounded-full bg-slate-800 px-2 py-0.2 text-[10px] text-purple-300/70">
+            {totalDocuments}
+          </span>
+        </button>
+      </nav>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-purple-200">
-                      Status
-                    </label>
-                    <select
-                      value={selectedAlert.status}
-                      onChange={(event) => updateSelectedAlert(event.target.value)}
-                      disabled={saving}
-                      className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
-                    >
-                      {statusOptions.map((statusValue) => (
-                        <option key={statusValue} value={statusValue}>
-                          {statusValue}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+      {/* Tab Panels */}
+      {activeTab === 'overview' && (
+        <OverviewTab
+          summary={summary}
+          students={students}
+          alerts={alerts}
+          auditLogsCount={totalAuditLogs}
+          documentsCount={totalDocuments}
+          criticalNewCount={criticalNewCount}
+          setActiveTab={setActiveTab}
+          onSelectAlert={(alert) => {
+            handleSelectAlert(alert);
+            setActiveTab('alerts');
+          }}
+        />
+      )}
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-purple-200">
-                      Admin notes
-                    </label>
-                    <textarea
-                      value={noteDraft}
-                      onChange={(event) => setNoteDraft(event.target.value)}
-                      rows="5"
-                      className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                      placeholder="Add review notes or next steps"
-                    />
-                  </div>
+      {activeTab === 'alerts' && (
+        <AlertsTab
+          alerts={alerts}
+          selectedAlert={selectedAlert}
+          noteDraft={noteDraft}
+          saving={saving}
+          onSelectAlert={handleSelectAlert}
+          onCloseAlert={handleCloseAlertDrawer}
+          onNoteDraftChange={setNoteDraft}
+          onUpdateAlert={handleUpdateAlert}
+          onDeleteAlert={handleDeleteAlert}
+          onClearAlerts={handleClearAlerts}
+          onLoadStudentProfile={handleLoadStudentProfile}
+        />
+      )}
 
-                  <button
-                    onClick={() => updateSelectedAlert()}
-                    disabled={saving}
-                    className="flex w-full items-center justify-center space-x-2 rounded-lg bg-purple-500 px-4 py-2 font-medium text-white hover:bg-purple-600 disabled:opacity-60"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>{saving ? 'Saving...' : 'Save Review'}</span>
-                  </button>
+      {activeTab === 'students' && (
+        <StudentsTab
+          students={students}
+          saving={saving}
+          onSaveStudent={handleSaveStudent}
+          onDeleteStudent={handleDeleteStudent}
+          onLoadStudentMentalHealth={handleLoadStudentProfile}
+          onLoadStudentRecords={handleEditStudentRecordsFromDirectory}
+          studentDetail={studentDetail}
+          onCloseStudentDetail={() => setStudentDetail(null)}
+        />
+      )}
 
-                  {selectedAlert.reg_id && (
-                    <button
-                      onClick={() => loadStudentMentalHealth(selectedAlert.reg_id)}
-                      className="flex w-full items-center justify-center space-x-2 rounded-lg border border-purple-500/30 px-4 py-2 text-purple-100 hover:bg-purple-500/10"
-                    >
-                      <ClipboardList className="h-4 w-4" />
-                      <span>Student Profile</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="flex h-full min-h-[280px] flex-col items-center justify-center text-center text-purple-200">
-                  <AlertTriangle className="mb-3 h-8 w-8" />
-                  <p>Select an alert to review the risk signal.</p>
-                </div>
-              )}
-            </aside>
-          </section>
-        ) : activeTab === 'students' ? (
-          <section className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
-            <form
-              onSubmit={handleSaveStudent}
-              className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4"
-            >
-              <div className="mb-4 flex items-center space-x-2 text-white">
-                <Plus className="h-5 w-5 text-purple-200" />
-                <h2 className="font-semibold">{editingStudent ? 'Edit Authorized Student' : 'Add Authorized Student'}</h2>
-              </div>
+      {activeTab === 'records' && (
+        <RecordsTab
+          students={students}
+          selectedStudent={selectedRecordStudent}
+          onSelectStudent={handleSelectRecordStudent}
+          recordData={recordData}
+          onSaveRecords={handleSaveRecords}
+          isSaving={saving}
+          isLoading={loading}
+        />
+      )}
 
-              <div className="space-y-3">
-                {[
-                  ['name', 'Name', 'Student name'],
-                  ['reg_id', 'Student ID', 'Registration ID'],
-                  ['email', 'Email', 'student@email.com'],
-                  ['department', 'Department', 'Department'],
-                  ['year', 'Year', '1'],
-                  ['semester', 'Semester', '1'],
-                ].map(([name, label, placeholder]) => (
-                  <div key={name}>
-                    <label className="mb-1 block text-sm text-purple-200">{label}</label>
-                    <input
-                      name={name}
-                      type={name === 'email' ? 'email' : name === 'year' || name === 'semester' ? 'number' : 'text'}
-                      value={studentForm[name]}
-                      onChange={handleStudentFormChange}
-                      required={['name', 'reg_id', 'email'].includes(name)}
-                      className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                      placeholder={placeholder}
-                    />
-                  </div>
-                ))}
-                <div>
-                  <label className="mb-1 block text-sm text-purple-200">Status</label>
-                  <select
-                    name="status"
-                    value={studentForm.status}
-                    onChange={handleStudentFormChange}
-                    className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
-                  >
-                    {['active', 'graduated', 'inactive'].map((statusOption) => (
-                      <option key={statusOption} value={statusOption}>
-                        {statusOption}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      {activeTab === 'audits' && (
+        <AuditLogsTab
+          logs={auditLogs}
+          totalLogs={totalAuditLogs}
+          onRefresh={handleRefreshAuditLogs}
+          isLoading={loading}
+          onViewStudentProfile={handleLoadStudentProfile}
+        />
+      )}
 
-              <div className="mt-4 flex flex-col gap-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex w-full items-center justify-center space-x-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 font-medium text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-60"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span>{saving ? (editingStudent ? 'Saving...' : 'Adding...') : editingStudent ? 'Save Student' : 'Add Student'}</span>
-                </button>
-                {editingStudent && (
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={resetStudentForm}
-                    className="flex w-full items-center justify-center space-x-2 rounded-lg border border-purple-500/30 px-4 py-3 text-purple-100 hover:bg-purple-500/10 disabled:opacity-60"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    <span>Cancel Edit</span>
-                  </button>
-                )}
-              </div>
-            </form>
-
-            <div className="space-y-5">
-              <div className="overflow-hidden rounded-xl border border-purple-500/20 bg-slate-800/70">
-                <div className="border-b border-purple-500/20 px-4 py-3">
-                  <h2 className="font-semibold text-white">Authorized Students</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[820px] text-left text-sm">
-                    <thead className="bg-slate-900/60 text-xs uppercase text-purple-200/70">
-                      <tr>
-                        <th className="px-4 py-3">Student</th>
-                        <th className="px-4 py-3">Email</th>
-                        <th className="px-4 py-3">Department</th>
-                        <th className="px-4 py-3">Semester</th>
-                        <th className="px-4 py-3">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/80">
-                      {students.map((student) => (
-                        <tr key={student.id} className="text-slate-100 hover:bg-slate-700/40">
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-white">{student.name || student.reg_id}</div>
-                            <div className="text-xs text-purple-200/70">{student.reg_id}</div>
-                          </td>
-                          <td className="px-4 py-3">{student.email}</td>
-                          <td className="px-4 py-3">{student.department || 'N/A'}</td>
-                          <td className="px-4 py-3">{student.semester ? `Semester ${student.semester}` : 'N/A'}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                              <button
-                                onClick={() => handleEditStudent(student)}
-                                className="inline-flex items-center justify-center rounded-lg border border-purple-500/30 px-3 py-1.5 text-purple-100 hover:bg-purple-500/10"
-                              >
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                onClick={() => handleDeleteStudent(student)}
-                                disabled={saving}
-                                className="inline-flex items-center justify-center rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-red-200 hover:bg-red-500/20 disabled:opacity-60"
-                              >
-                                <span>Remove</span>
-                              </button>
-                              <button
-                                onClick={() => loadStudentMentalHealth(student.reg_id)}
-                                className="inline-flex items-center justify-center rounded-lg border border-purple-500/30 px-3 py-1.5 text-purple-100 hover:bg-purple-500/10"
-                              >
-                                <Eye className="h-4 w-4" />
-                                <span>Profile</span>
-                              </button>
-                              <button
-                                onClick={() => loadStudentRecords(student.reg_id)}
-                                className="inline-flex items-center justify-center rounded-lg border border-purple-500/30 px-3 py-1.5 text-purple-100 hover:bg-purple-500/10"
-                              >
-                                <ClipboardList className="h-4 w-4" />
-                                <span>Records</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {studentDetail && (
-                <div className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4">
-                  <div className="mb-4">
-                    <p className="text-xs uppercase tracking-wide text-purple-200/70">
-                      Student Mental-Health Profile
-                    </p>
-                    <h3 className="mt-1 text-lg font-bold text-white">
-                      {studentDetail.student.name || studentDetail.student.reg_id}
-                    </h3>
-                    <p className="text-sm text-purple-200">
-                      {studentDetail.student.reg_id} - {studentDetail.student.email}
-                    </p>
-                  </div>
-
-                  {studentDetail.alerts.length === 0 ? (
-                    <p className="rounded-lg bg-slate-900/50 p-3 text-purple-200">
-                      No mental-health alerts recorded for this student.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {studentDetail.alerts.map((alert) => (
-                        <div key={alert.id} className="rounded-lg border border-slate-600/70 bg-slate-900/50 p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
-                                severityClasses[alert.severity] || 'border-slate-500 bg-slate-700 text-white'
-                              }`}
-                            >
-                              {alert.severity}
-                            </span>
-                            <span className="text-sm text-purple-200">
-                              {alert.predicted_class || 'Risk signal'} - {formatDate(alert.created_at)}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm font-medium text-slate-100">
-                            {alert.summary || 'No summary stored.'}
-                          </p>
-                          <p className="mt-2 text-sm text-slate-100">
-                            {alert.question_sample || 'No sample stored.'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-        ) : (
-          <section className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4">
-              <h2 className="mb-3 font-semibold text-white">Choose Student</h2>
-              <select
-                value={recordForm.reg_id}
-                onChange={(event) => loadStudentRecords(event.target.value)}
-                className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
-              >
-                <option value="">Select a student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.reg_id}>
-                    {student.reg_id} - {student.name || student.email}
-                  </option>
-                ))}
-              </select>
-
-              {recordStudent && (
-                <div className="mt-4 rounded-lg bg-slate-900/50 p-3 text-sm text-purple-100">
-                  <div className="font-medium text-white">{recordStudent.name || recordStudent.reg_id}</div>
-                  <div>{recordStudent.email}</div>
-                  <div>{recordStudent.department || 'Department N/A'}</div>
-                </div>
-              )}
-            </aside>
-
-            <form
-              onSubmit={handleSaveRecords}
-              className="rounded-xl border border-purple-500/20 bg-slate-800/70 p-4"
-            >
-              <div className="mb-4 flex items-center space-x-2 text-white">
-                <ClipboardList className="h-5 w-5 text-purple-200" />
-                <h2 className="font-semibold">Academic and Billing Records</h2>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-purple-200/70">
-                    Current Academic Summary
-                  </h3>
-                  {[
-                    ['academic_semester', 'Academic Semester', 'sem4'],
-                    ['academic_cgpa', 'Current CGPA', '3.65'],
-                    ['credits_completed', 'Credits Completed', '48'],
-                  ].map(([name, label, placeholder]) => (
-                    <div key={name}>
-                      <label className="mb-1 block text-sm text-purple-200">{label}</label>
-                      <input
-                        name={name}
-                        value={recordForm[name]}
-                        onChange={handleRecordFormChange}
-                        type={name === 'academic_semester' ? 'text' : 'number'}
-                        step={name === 'academic_cgpa' ? '0.01' : '1'}
-                        className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                        placeholder={placeholder}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-purple-200/70">
-                    Billing
-                  </h3>
-                  {[
-                    ['tuition_fee', 'Tuition Fee', '153000'],
-                    ['paid_amount', 'Paid Amount', '100000'],
-                    ['due_amount', 'Due Amount', '53000'],
-                    ['pending_fees', 'Pending Fees', '53000'],
-                  ].map(([name, label, placeholder]) => (
-                    <div key={name}>
-                      <label className="mb-1 block text-sm text-purple-200">{label}</label>
-                      <input
-                        name={name}
-                        value={recordForm[name]}
-                        onChange={handleRecordFormChange}
-                        type="number"
-                        className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                        placeholder={placeholder}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm text-purple-200">Semester CGPA</label>
-                  <textarea
-                    name="cgpa_records"
-                    value={recordForm.cgpa_records}
-                    onChange={handleRecordFormChange}
-                    rows="8"
-                    className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 font-mono text-sm text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                    placeholder={'sem1: 3.50\nsem2: 3.70'}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm text-purple-200">Course Marks</label>
-                  <textarea
-                    name="courses"
-                    value={recordForm.courses}
-                    onChange={handleRecordFormChange}
-                    rows="8"
-                    className="w-full rounded-lg border border-purple-500/30 bg-slate-700 px-3 py-2 font-mono text-sm text-white placeholder-purple-300/50 focus:border-purple-500 focus:outline-none"
-                    placeholder={'Data Structures: 87\nDatabase Systems: 91'}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving || !recordForm.reg_id}
-                className="mt-5 flex items-center justify-center space-x-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 font-medium text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-60"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                <span>{saving ? 'Saving...' : 'Save Records'}</span>
-              </button>
-            </form>
-          </section>
-        )}
-      </div>
+      {activeTab === 'documents' && (
+        <DocumentsTab
+          documents={documents}
+          totalDocuments={totalDocuments}
+          onRefresh={handleRefreshDocuments}
+          onUploadDocument={handleUploadDocument}
+          onDeleteDocument={handleDeleteDocument}
+          isLoading={loading}
+          isUploading={uploadingDoc}
+          isDeleting={deletingDoc}
+        />
+      )}
     </main>
   );
-};
-
-export default AdminDashboard;
+}

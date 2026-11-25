@@ -143,11 +143,16 @@ class MentalHealthService:
             r"\bscared of living\b",
             r"\bmore jete chai\b",
             r"\bbachte chai na\b",
+            r"\bbachte iccha\b",
+            r"\bbachte mon\b",
+            r"\bmorar iccha\b",
             r"\bnijeke mere felbo\b",
             r"\bsuicide korte chai\b",
             r"আত্মহত্যা",
             r"মরতে চাই",
             r"বাঁচতে চাই না",
+            r"বাঁচতে ইচ্ছা",
+            r"বেঁচে থাকতে ইচ্ছা",
             r"নিজেকে মেরে",
         ]
 
@@ -172,6 +177,10 @@ class MentalHealthService:
             r"\bi (?:can't|cannot) continue\b",
             r"\bi should quit\b",
             r"\bwant to quit\b",
+            r"\b(?:semester\s+)?drop(?:\s+out|\s+dewa|\s+dibo|\s+debo|\s+ucit|\s+korte)?\b",
+            r"\b(?:chere|cherey)\s+(?:dibo|debo|dewa|diye|dite)\b",
+            r"\b(?:poralekha|porashona)\s+(?:chere|valo\s+lag)\b",
+            r"\b(?:quit|give\s+up)\s+(?:study|studying|university|school)?\b",
             r"\bkhub chap\b",
             r"\bhotash\b",
             r"\budbigno\b",
@@ -179,7 +188,18 @@ class MentalHealthService:
             r"হতাশ",
             r"উদ্বিগ্ন",
             r"খুব চাপ",
+            r"মানসিক চাপ",
+            r"চাপ লাগছে",
             r"একা লাগছে",
+            r"চালিয়ে যেতে পারব না",
+            r"চালিয়ে যেতে পারব না",
+            r"চালাতে পারব না",
+            r"আর পারছি না",
+            r"মন খারাপ",
+            r"সেমিস্টার\s+ড্রপ",
+            r"ড্রপ\s+(?:দেওয়া|দিতে|দিব|দেব)",
+            r"ছেড়ে\s+(?:দেওয়া|দিতে|দিব|দেব)",
+            r"পড়াশোনা\s+ছেড়ে",
         ]
 
         self.support_seeking_patterns = [
@@ -191,6 +211,11 @@ class MentalHealthService:
             r"\bnot coping\b",
             r"\bneed support\b",
             r"\blike i can't\b",
+            r"\b(?:semester\s+)?drop(?:\s+dewa|\s+dibo|\s+ucit|\s+out)?\b",
+            r"\b(?:chere\s+dewa|chere\s+dibo|chere\s+dite)\b",
+            r"\b(?:give\s+up|quit\s+study|quit\s+studying)\b",
+            r"সেমিস্টার\s+ড্রপ",
+            r"ছেড়ে\s+(?:দেওয়া|দিব|দিতে)",
         ]
         self.ambiguous_distress_patterns = [
             r"\bnot feeling (?:well|okay|ok|myself)\b",

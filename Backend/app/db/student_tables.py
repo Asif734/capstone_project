@@ -12,10 +12,17 @@ class AuthorizedUser(Base):
     reg_id = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=True)
     email = Column(String, unique=True, nullable=False, index=True)
+    program = Column(String, nullable=True)          # e.g., "B.Sc. in Computer Science and Engineering"
+    faculty = Column(String, nullable=True)          # e.g., "Faculty of Science & Technology (FST)"
+    department = Column(String, nullable=True)
+    batch = Column(String, nullable=True)            # e.g., "Batch 2023"
     year = Column(Integer, nullable=True)
     semester = Column(Integer, nullable=True)
-    department = Column(String, nullable=True)
-    status = Column(String, default="active")  # active, graduated, etc.
+    advisor_name = Column(String, nullable=True)
+    advisor_email = Column(String, nullable=True)
+    enrollment_date = Column(String, nullable=True)  # ISO date string e.g. "2023-01-15"
+    expected_graduation = Column(String, nullable=True)
+    status = Column(String, default="active")        # active, graduated, on_leave
 
     academic = relationship(
         "AcademicRecord",
@@ -54,8 +61,13 @@ class AcademicRecord(Base):
     )
 
     semester = Column(String, nullable=False)
-    cgpa = Column(Float, nullable=False)
-    credits_completed = Column(Integer)
+    cgpa = Column(Float, nullable=False)             # Current / latest semester GPA
+    total_cgpa = Column(Float, nullable=True)        # Cumulative CGPA across all semesters
+    credits_completed = Column(Integer, default=0)
+    credits_required = Column(Integer, default=144)
+    attendance_percentage = Column(Float, nullable=True)
+    attendance_status = Column(String, nullable=True)  # Collegiate, Non-Collegiate, Dis-Collegiate
+    academic_standing = Column(String, default="Good Standing")
 
     user = relationship("AuthorizedUser", back_populates="academic")
 
@@ -69,10 +81,14 @@ class FinancialRecord(Base):
         primary_key=True
     )
 
-    tuition_fee = Column(Integer)
-    paid_amount = Column(Integer)
-    due_amount = Column(Integer)
+    tuition_fee = Column(Integer, default=0)
+    waiver_amount = Column(Integer, default=0)
+    paid_amount = Column(Integer, default=0)
+    due_amount = Column(Integer, default=0)
     pending_fees = Column(Integer, default=0)
+    payment_status = Column(String, default="paid")  # paid, partial, due
+    last_payment_date = Column(String, nullable=True)
+    payment_deadline = Column(String, nullable=True)
 
     user = relationship("AuthorizedUser", back_populates="financial")
 
@@ -82,8 +98,14 @@ class StudentCourse(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     reg_id = Column(String, ForeignKey("authorized_users.reg_id", ondelete="CASCADE"), nullable=False, index=True)
+    course_code = Column(String, nullable=True)
     course_name = Column(String, nullable=False)
+    credits = Column(Float, default=3.0)
+    semester = Column(String, nullable=True)
     marks = Column(Float, nullable=True)
+    grade = Column(String, nullable=True)
+    status = Column(String, default="enrolled")      # enrolled, completed, dropped
+    instructor = Column(String, nullable=True)
 
     user = relationship("AuthorizedUser", back_populates="courses")
 
@@ -93,8 +115,10 @@ class CGPARecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     reg_id = Column(String, ForeignKey("authorized_users.reg_id", ondelete="CASCADE"), nullable=False, index=True)
-    semester = Column(String, nullable=False)  # e.g., "sem1", "sem2"
+    semester = Column(String, nullable=False)        # e.g., "sem1", "sem2"
+    term_label = Column(String, nullable=True)       # e.g., "Spring 2023"
     cgpa = Column(Float, nullable=False)
+    credits = Column(Integer, default=15)
 
     user = relationship("AuthorizedUser", back_populates="cgpa_records")
 

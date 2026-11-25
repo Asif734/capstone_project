@@ -363,8 +363,14 @@ def update_student_records(
             financial.paid_amount = data.financial.paid_amount
         if data.financial.due_amount is not None:
             financial.due_amount = data.financial.due_amount
+            if data.financial.pending_fees is None:
+                financial.pending_fees = data.financial.due_amount
         if data.financial.pending_fees is not None:
             financial.pending_fees = data.financial.pending_fees
+            if data.financial.due_amount is None:
+                financial.due_amount = data.financial.pending_fees
+        effective_due = financial.due_amount or financial.pending_fees or 0
+        financial.payment_status = "paid" if effective_due == 0 else ("partial" if (financial.paid_amount or 0) > 0 else "due")
 
     if data.cgpa_records is not None:
         db.query(CGPARecord).filter(CGPARecord.reg_id == normalized_reg_id).delete()
@@ -457,6 +463,39 @@ def update_mental_health_alert(
     if alert.reg_id:
         student = db.query(AuthorizedUser).filter(AuthorizedUser.reg_id == alert.reg_id).first()
     return serialize_alert(alert, student)
+
+
+@router.delete(
+    "/mental-health-alerts/{alert_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_mental_health_alert(
+    alert_id: int,
+    _: None = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    alert = db.query(MentalHealthAlert).filter(MentalHealthAlert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mental-health alert not found",
+        )
+    db.delete(alert)
+    db.commit()
+    return None
+
+
+@router.delete(
+    "/mental-health-alerts",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def clear_mental_health_alerts(
+    _: None = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    db.query(MentalHealthAlert).delete()
+    db.commit()
+    return None
 
 
 @router.get(
